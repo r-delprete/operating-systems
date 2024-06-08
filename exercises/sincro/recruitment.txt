@@ -1,0 +1,55 @@
+/**
+ * Nella sala recruitment di una grande azienda informatica, durante una sessione di interview possono
+ * prendere posto al piu' N candidati, mentre i restanti candidati prenderanno parte alla sessione di interview successiva.
+ * Ogni candidato che ha trovato posto sara' chiamato al tavolo delle interview.
+ * L'addetto alle risorse umane attende fino che è disponibile un candidato.
+ * Terminata l'intervista il candidato lascia il tavolo e la sala facendo posto al prossimo candidato.
+ * Le sessioni di interview terminano quando non ci sono piu' candidati in attesa.
+ * Proporre una soluzione e discutere eventuali problemi di deadlock.
+ */
+
+int posti = N;
+int postiOccupati = 0;
+
+semaforo contatore : candidate = 0;
+semaforo binario : tavolo = 1;
+
+mutex : postiCs;
+
+candidato()
+{
+  /* repeat */
+  lock(postiCs);
+  if (postiOccupati < posti)
+  {
+    postiOccupati++;
+    unlock(postiCs);
+
+    wait(tavolo);
+    signal(candidate);
+
+    lock(postiCs);
+    postiOccupati--;
+    unlock(postiCs);
+  }
+  else
+  {
+    unlock(postiCs);
+    /* attendi sessione */
+  }
+  /* forever */
+}
+
+addetto()
+{
+  wait(candidate);
+  interview();
+  signal(tavolo);
+
+  lock(postiCs);
+  if (postiOccupati == 0)
+  {
+    /* termina sessione */
+  }
+  unlock(postiCs);
+}

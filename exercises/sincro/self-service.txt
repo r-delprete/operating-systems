@@ -1,0 +1,63 @@
+/**
+ * In un ristorante self-service, i clienti, dopo aver mangiato,
+ * dispongono i vassoi in M contenitori, ognuno di K ripiani.
+ * Periodicamente, un addetto sceglie un contenitore tra quelli
+ * in cui ci sono più ripiani liberi, lo svuota, lava i piatti e riporta
+ * il contenitore in sala.
+ */
+
+semaforo contatore : contenitoriDisp = M;
+semaforo contatore : ripianiDisp[contenitoriDisp] = K;
+
+mutex : cs;
+
+int firstFreeIndex = 0;
+int ripiani[M] = 0;
+int vassoio = 1;
+
+cliente()
+{
+  while (true)
+  {
+    wait(contenitoreDisp);
+
+    lock(cs);
+    int contLocale = firstFreeIndex++;
+    wait(ripianiDisp[contLocale]);
+    ripiani[contLocale] += vassoio;
+    unlock(cs);
+
+    lock(cs);
+    firstFreeIndex--;
+    unlock(cs);
+
+    signal(contenitoriDisp);
+  }
+}
+
+addetto()
+{
+  while (true)
+  {
+    sleep(1);
+    int min = inf;
+    int index = -1;
+
+    for (int i = 0; i < M; i++)
+    {
+      if (ripiani[i] <= min && ripiani[i] != 0)
+      {
+        min = ripiani[i];
+        index = i;
+      }
+    }
+  }
+
+  if (min != inf)
+  {
+    for (int i = 0; i < min; i++)
+    {
+      signal(contenitoreDisp);
+    }
+  }
+}

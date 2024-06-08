@@ -1,0 +1,59 @@
+/**
+ * In un ambulatorio medico lavorano due medici ed un infermiere. Inizialmente i due medici sono in attesa
+ * dell'arrivo dei pazienti. Un paziente entra nell'ambulatorio e si reca dal primo medico libero che esegue la visita
+ * medica. Al termine della visita, il medico redige un referto che inserisce in un portadocumenti con M posizioni.
+ * L'infermiere preleva un referto alla volta e lo inserisce nel database dell'ambulatorio. Se entrambi i medici sono
+ * impegnati, il paziente si accomoda nella sala d'aspetto che dispone di N sedie. Se le N sedie sono tutte occupate,
+ * il paziente lascia l'ambulatorio.
+ * Discutere la soluzione proposta in termini di possibili situazioni di starvation/deadlock e, nel caso, si propongano
+ * soluzioni ammissibili.
+ */
+
+semaforo contatore : doctors = 2;
+semaforo binario : assistants = 0;
+semaforo binario : endVisit = 0;
+mutex : CS;
+
+int posti = N;
+int postiOccupati = 0;
+int portaDocs[M] = 0;
+
+doctor()
+{
+  lock(CS);
+  if (postiOccupati < posti)
+  {
+    postiOccupati++;
+    unlock(CS);
+
+    wait(endVisit);
+    portaDocs[pidPaziente] = 1;
+    signal(doctors);
+
+    lock(CS);
+    posti--;
+    unlock(CS);
+
+    wait(assistants);
+  }
+  else
+  {
+    unlock(CS);
+    exit();
+  }
+}
+
+patient()
+{
+  wait(doctors);
+  visit();
+  document();
+  signal(endVisit);
+}
+
+assistant()
+{
+  takeDoc();
+  insertDoc();
+  signal(assistants);
+}

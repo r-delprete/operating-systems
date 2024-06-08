@@ -1,0 +1,100 @@
+/**
+ * In una pizzeria, due pizzaioli sfornano continuamente pizze che
+ * pongono di volta in volta in uno di N piatti disponibili su un bancone.
+ * I piatti sono prelevati da M (M<N) camerieri che provvedono a
+ * servirle ai tavoli. Ciascun cameriere può portare:
+ *  • 2 pizze per volta, se disponibili;
+ *  • in caso di affollamento, i camerieri preleveranno 3 pizze per volta.
+ * Fornire una soluzione con semafori e discutere eventuali problemi di
+ * starvation/deadlock.
+ */
+
+int bancone[N] = {0};
+int indexBancone = 0;
+int clientela;
+bool affollato = false;
+
+semaforo contatore : full = 0;
+semaforo contatore : empty = N;
+
+mutex : csBancone;
+mutex : csClientela;
+
+clienteAffollamento()
+{
+  /* repeat */
+  sleep(1);
+
+  clientela++;
+
+  lock(csClientela);
+  if (clientela > 10)
+  {
+    affollato = true;
+  }
+  else
+  {
+    affollato = false;
+  }
+  unlock(csClientela);
+  /* forever */
+}
+
+pizzaioli()
+{
+  /* repeat */
+  pizza = makePizza();
+
+  wait(empty);
+
+  lock(csBancone);
+  bancone[indexBancone++] = pizza;
+  unlock(csBancone);
+
+  signal(full);
+  /* forever */
+}
+
+cameriere()
+{
+  int pizzeDaServire = 0;
+  int pizzeDaPortare[3] = {0};
+
+  lock(csClientela);
+  if (affollato)
+  {
+    pizzeDaServire = 3;
+  }
+  else
+  {
+    pizzeDaServire = 2;
+  }
+  unlock(csClientela);
+
+  lock(csBancone);
+  if (indexBancone <= pizzeDaServire)
+  {
+    for (int i = 0; i < pizzeDaServire; i++)
+    {
+      wait(full);
+      signal(vuoto);
+      pizzeDaPortare[i] = bancone[indexBancone--];
+      unlock(csBancone);
+    }
+  }
+  else
+  {
+    for (int i = 0; i < indexBancone; i++)
+    {
+      wait(full);
+      signal(vuoto);
+      pizzeDaPortare[i] = bancone[indexBancone--];
+      unlock(csBancone);
+    }
+  }
+
+  lock(csClientela);
+  int clientiServiti = len(pizzeDaPortare != 0);
+  clientela -= clientiServiti;
+  unlock(csClientela);
+}

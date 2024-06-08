@@ -1,0 +1,94 @@
+/**
+ * In una birreria di Dusseldorf, due osti riempiono continuamente N boccali di birra che pongono di volta in volta in su un bancone.
+ * I boccali sono prelevati da M (M<N) camerieri che provvedono a servirli ai tavoli,
+ * Ciascun cameriere può portare 2 boccali per volta, se disponibili, ma, in caso di affollamento, i camerieri preleveranno 4 boccali per volta.
+ * Fornire una soluzione con semafori e discutere eventuali problemi di starvation/deadlock.
+ */
+
+int boccali;
+int camerieri;
+int bancone[boccali] = 0;
+bool affollato;
+int clientela = 0;
+
+semaforo contatore : pieno = 0;
+semaforo contatore : vuoto = N;
+
+mutex : clientelaCs;
+mutex : banconeCs;
+
+clientelaAffollamento()
+{
+  /* repeat */
+  sleep(1);
+  clientela++;
+
+  lock(clientelaCs);
+  if (clientela > 10)
+  {
+    affollato = true;
+  }
+  else
+  {
+    affollato = false;
+  }
+  unlock(clientelaCs);
+  /* forever */
+}
+
+oste()
+{
+  /* repeat */
+  boccale = riempiBoccale();
+
+  wait(vuoto);
+
+  lock(banconeCs);
+  bancone[riempito] = boccale;
+  riempito = riempito + 1 % N;
+  unlock(banconeCs);
+
+  signal(pieno);
+  /* forever */
+}
+
+cameriere()
+{
+  /* repeat */
+  int boccaliDaPortare = 0;
+
+  lock(clientelaCs);
+  if (affollato)
+  {
+    boccaliDaPortare = 4;
+  }
+  else
+  {
+    boccaliDaPortare = 2;
+  }
+  unlock(clientelaCs);
+
+  lock(banconeCs);
+  if (riempito >= boccaliDaPortare)
+  {
+    for (i to boccaliDaPortare)
+    {
+      wait(pieno);
+      signal(vuoto);
+      boccale = bancone[preso];
+      preso = preso + 1 % N;
+    }
+  }
+  else
+  {
+    for (i to riempito)
+    {
+      wait(pieno);
+      signal(vuoto);
+      boccale = bacone[preso];
+      preso = preso + 1 % N;
+    }
+  }
+  unlock(banconeCs);
+  /* forever */
+}

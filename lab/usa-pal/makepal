@@ -1,0 +1,6 @@
+# Make per progetto usaPal, versione semplificata
+
+usaPal: usaPal.o reverse.o palindroma.o
+usaPal.o: palindroma.h
+reverse.o: reverse.h
+palindroma.o: palindroma.h reverse.h

@@ -1,0 +1,58 @@
+/**
+ * Il chitarrista Mancuso ha una masterclass in cui possono prendere parte N chitarristi che possono scegliere
+ * tra M modelli di chitarra con K chitarre per modello.
+ * Quando tutti gl allievi hanno una chitarra, inizia masterclass; quelli che non trovano posto prenderenna parte alla successiva.
+ * Tutto termina quando non ci sono chitarristi in attesa.
+ */
+
+int capienzaMax = 10;
+int capienzaAttuale = 0;
+int chitarristi;
+int modelliChitarra;
+int chitarrePerModello;
+int chitarre[modelliChitarra][chitarrePerModello] = 1; // 1 disponibile, 0 non disponibile
+
+semaforo contatore : maxMasterclass;
+semaforo binario : accessoMasterclass;
+semaforo binario : endMasterclass;
+mutex : accessoChitarre;
+
+masterclass()
+{
+  int modelloScelto;
+  int modelloChitarraScelto;
+
+  lock(accessoChitarre);
+  if (chitarre[modelloScelto][modelloChitarraScelto] == 1)
+  {
+    chitarre[modelloScelto][modelloChitarraScelto] = 0;
+    unlock(accessoChitarre);
+
+    if (capienzaAttuale <= chitarristi)
+    {
+      capienzaAttuale++;
+      if (capienzaAttuale <= capienzaMax)
+      {
+        signal(accessoMasterclass);
+        signal(endMasterclass);
+      }
+      else
+      {
+        sleep(1);
+      }
+    }
+  }
+  else
+  {
+    unlock(accessoChitarre);
+  }
+}
+
+chitarrista()
+{
+  wait(accessoMasterclass);
+  trywait(maxMasterclass > 0);
+  concerto();
+  signal(maxMasterclass);
+  wait(endMasterclass);
+}
