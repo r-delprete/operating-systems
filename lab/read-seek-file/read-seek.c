@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <fcntl.h>
-#include "../lib/apue.h"
+#include "../libs/apue.h"
 
 int main()
 {
@@ -20,7 +20,7 @@ int main()
             close(file_descriptor);
             exit(-1);
         }
-        
+
         position = position + 5;
 
         if (lseek(file_descriptor, position, SEEK_SET) == -1)

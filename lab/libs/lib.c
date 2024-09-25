@@ -23,7 +23,7 @@ int **matrixGeneration(int rows, int cols, boolean hasToFill)
     {
       for (int j = 0; j < cols; j++)
       {
-        int randomNumber = 1 + random() % 26;
+        int randomNumber = 1 + rand() % 26;
         matrix[i][j] = randomNumber;
       }
     }
@@ -65,4 +65,71 @@ void matrixDeallocation(int **matrix, int rows)
   }
 
   free(matrix);
+}
+
+/**
+ * Function to generate an array
+ * @param size The array size
+ * @param hasToFill Flag to indicate if the matrix has to fill with random values
+ * @return The array generated
+ */
+
+int *arrayGeneration(int size, boolean hasToFill)
+{
+  int *array = calloc(size, sizeof(int));
+
+  // Filling array
+  if (hasToFill)
+  {
+    for (int i = 0; i < size; i++)
+    {
+      int randomNumber = 1 + rand() % 30;
+      array[i] = randomNumber;
+    }
+  }
+
+  return array;
+}
+
+/**
+ * Function to print an array
+ * @param array The array to print
+ * @param size The array size
+ */
+void printArray(int *array, int size)
+{
+  printf("Array:\n");
+
+  for (int i = 0; i < size; i++)
+  {
+    printf("%d\t", array[i]);
+  }
+
+  printf("\n");
+}
+
+/**
+ * Function to get minimum between two number
+ * @param a The first number
+ * @param b The second number
+ * @return The minimum value
+ */
+int min(int a, int b)
+{
+  return a < b ? a : b;
+}
+
+/**
+ * Function to check argument number passed into command line
+ * @param argc Argument number passed
+ * @param msg Message to show
+ * Shows a message if there is an error
+ */
+void checkArgumentsNumber(int argc, char *msg)
+{
+  if (argc != 2)
+  {
+    printf("Error! Correct usage is: ./<filename> %s\n", msg);
+    exit(-1);
+  }
 }

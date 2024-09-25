@@ -1,6 +1,7 @@
-#include "../lib/apue.h"
+#include "../libs/apue.h"
 
-int main() {
+int main()
+{
     int sum = 0, i = 0, value;
     char buffer[1000];
 
@@ -9,7 +10,8 @@ int main() {
     while (read(STDIN_FILENO, buffer, 4) > 0)
     {
         value = atoi(buffer);
-        if (value == -1) break;
+        if (value == -1)
+            break;
         else
         {
             i++;
@@ -24,5 +26,4 @@ int main() {
             }
         }
     }
-    
 }

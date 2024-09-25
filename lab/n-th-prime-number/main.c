@@ -3,7 +3,7 @@
  */
 
 #include <pthread.h>
-#include "../lib/apue.h"
+#include "../libs/apue.h"
 
 void *getNthPrimeNumber(void *args)
 {

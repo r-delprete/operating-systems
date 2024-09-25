@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../lib/apue.h"
+#include "../libs/apue.h"
 
 #define MAX_ITEMS 10000
 #define MAX_THREADS 12

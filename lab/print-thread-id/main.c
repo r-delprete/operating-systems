@@ -1,4 +1,4 @@
-#include "../lib/apue.h"
+#include "../libs/apue.h"
 #include <pthread.h>
 
 pthread_t threadID;

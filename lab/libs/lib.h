@@ -12,8 +12,12 @@ typedef enum
   true
 } boolean;
 
-int **matrixGeneration(int rows, int cols, boolean hasToFill);
+int **matrixGeneration(int, int, boolean);
 void printMatrix(int **, int, int);
 void matrixDeallocation(int **, int);
+int *arrayGeneration(int, boolean);
+void printArray(int *, int);
+int min(int, int);
+void checkArgumentsNumber(int, char *);
 
 #endif

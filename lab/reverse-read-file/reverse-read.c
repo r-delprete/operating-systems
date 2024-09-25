@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
-#include "../lib/apue.h"
+#include "../libs/apue.h"
 
 int main()
 {
