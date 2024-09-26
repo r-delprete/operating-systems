@@ -123,11 +123,12 @@ int min(int a, int b)
  * Function to check argument number passed into command line
  * @param argc Argument number passed
  * @param msg Message to show
+ * @param numArgumentsNeeded Arguments number needed to execute program
  * Shows a message if there is an error
  */
-void checkArgumentsNumber(int argc, char *msg)
+void checkArgumentsNumber(int argc, char *msg, int numArgumentsNeeded)
 {
-  if (argc != 2)
+  if (argc != numArgumentsNeeded)
   {
     printf("Error! Correct usage is: ./<filename> %s\n", msg);
     exit(-1);

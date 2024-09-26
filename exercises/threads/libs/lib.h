@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <semaphore.h>
+#include <fcntl.h>
 
 typedef enum
 {
@@ -18,6 +20,6 @@ void matrixDeallocation(int **, int);
 int *arrayGeneration(int, boolean);
 void printArray(int *, int);
 int min(int, int);
-void checkArgumentsNumber(int, char *);
+void checkArgumentsNumber(int, char *, int);
 
 #endif
