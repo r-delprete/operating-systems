@@ -134,3 +134,18 @@ void checkArgumentsNumber(int argc, char *msg, int numArgumentsNeeded)
     exit(-1);
   }
 }
+
+/**
+ * Function to check if a semaphore exists
+ * @param semaphore The semaphore
+ * @return true if exists, false otherwise
+ */
+boolean checkSemaphoreExistence(sem_t *semaphore)
+{
+  if (semaphore == SEM_FAILED)
+  {
+    return true;
+  }
+
+  return false;
+}

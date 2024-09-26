@@ -30,6 +30,8 @@ void *produce(void *args)
     sem_post(threadInfo.mutex);
 
     sem_post(threadInfo.storedItemsSemCounter);
+
+    sleep(1);
   }
 
   return NULL;
@@ -60,6 +62,10 @@ void *consume(void *args)
 
 int main(int argc, char **argv)
 {
+  sem_unlink(mutexSemName);
+  sem_unlink(emptyItemsSemCounterName);
+  sem_unlink(storedItemsSemCounterName);
+
   checkArgumentsNumber(argc, "<items number>", 2);
 
   numItemsChosen = atoi(argv[1]);
@@ -70,9 +76,23 @@ int main(int argc, char **argv)
   threadInfo.emptyItemsSemCounter = sem_open(emptyItemsSemCounterName, O_CREAT | O_EXCL, FILE_MODE, BUFFER_SIZE);
   threadInfo.storedItemsSemCounter = sem_open(storedItemsSemCounterName, O_CREAT | O_EXCL, FILE_MODE, 0);
 
-  if (threadInfo.mutex == SEM_FAILED || threadInfo.emptyItemsSemCounter == SEM_FAILED || threadInfo.storedItemsSemCounter == SEM_FAILED)
+  if (checkSemaphoreExistence(threadInfo.mutex) || checkSemaphoreExistence(threadInfo.emptyItemsSemCounter) || checkSemaphoreExistence(threadInfo.storedItemsSemCounter))
   {
-    perror("sem_open");
+    if (checkSemaphoreExistence(threadInfo.mutex))
+    {
+      printf("Error: semaphore with name %s already exists\n", mutexSemName);
+    }
+
+    if (checkSemaphoreExistence(threadInfo.emptyItemsSemCounter))
+    {
+      printf("Error: semaphore with name %s already exists\n", emptyItemsSemCounterName);
+    }
+
+    if (checkSemaphoreExistence(threadInfo.storedItemsSemCounter))
+    {
+      printf("Error: semaphore with name %s already exists\n", storedItemsSemCounterName);
+    }
+
     return EXIT_FAILURE;
   }
 
