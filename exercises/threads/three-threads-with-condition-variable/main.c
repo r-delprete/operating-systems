@@ -9,7 +9,7 @@
  * Utilizzare le variabili condizione
  */
 
-#include "../libs/lib.h"
+#include "../../libs/lib.h"
 
 #define ARRAY_SIZE 1000
 
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 {
   srand(time(NULL));
 
-  checkArgumentsNumber(argc, "<limit>");
+  checkArgumentsNumber(argc, "<limit>", 2);
 
   limit = min(atoi(argv[1]), ARRAY_SIZE);
 

@@ -9,6 +9,9 @@
 #include <semaphore.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <wait.h>
+
+#define FILE_MODE S_IRUSR | S_IWUSR
 
 typedef enum
 {

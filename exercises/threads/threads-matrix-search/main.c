@@ -8,7 +8,7 @@
  * cancellati)
  */
 
-#include "../libs/lib.h"
+#include "../../libs/lib.h"
 
 #define MAX_THREADS 16
 #define MATRIX_ROWS 5

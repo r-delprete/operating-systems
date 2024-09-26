@@ -7,10 +7,7 @@
  * la stampa alternata di "o" e "."
  */
 
-#include <pthread.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdio.h>
+#include "../../libs/lib.h"
 
 int globalVar;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;

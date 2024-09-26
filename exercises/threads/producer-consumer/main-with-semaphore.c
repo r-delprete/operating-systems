@@ -2,9 +2,8 @@
  * Producer and consumer with semaphores
  */
 
-#include "../libs/lib.h"
+#include "../../libs/lib.h"
 
-#define FILE_MODE S_IRUSR | S_IWUSR
 #define BUFFER_SIZE 10
 
 const char *mutexSemName = "/mutex";
