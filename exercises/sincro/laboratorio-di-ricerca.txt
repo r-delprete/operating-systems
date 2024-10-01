@@ -1,0 +1,99 @@
+/**
+* Un laboratorio di ricerca è dotato di N postazioni, di cui K a
+* disposizione del personale di tipo «A» e le rimanenti N-K a disposizione
+* del personale di tipo «B». L’accesso al laboratorio è gestito da un
+* coordinatore che assegna le postazioni secondo la seguente politica:
+* un utente di tipo «A» accede al laboratorio solo se una delle K
+* postazioni è libera, altrimenti va via; un utente di tipo «B» accede al
+* laboratorio solo se una delle N-K postazioni è libera, altrimenti si mette
+* in attesa. Le postazioni riservate agli utenti di tipo «B» non possono
+* essere occupate per più di M minuti, alla scadenza dei quali l’utente
+* libera la postazione.
+*/
+
+int: postazioni = N
+int: minuti = M
+
+semaforo contatore: postazioni_personale_A = K
+semaforo contatore: postazioni_personale_B = N - K
+semaforo contatore: ricercatore_in_attesa = 0
+int: count_A = 0
+int: count_B = 0
+semaforo binario: mutex_A = 1
+semaforo binario: mutex_B = 1
+semaforo binario: assegnazione = 0
+bool: is_full = false
+semaforo binario: mutex_full = 1
+
+ricercatore() {
+  signal(ricercatore_in_attesa)
+
+  // 1 = ricercatore A; 2 = ricercatore B
+  tipo = rand(1, 2)
+
+  wait(assegnazione)
+
+  if (tipo == 1) {
+    wait(mutex_full)
+    if (is_full) {
+      signal(mutex_full)
+      exit(0)
+    } else {
+      signal(mutex_full)
+    }
+
+    sleep(minuti) // postazione occupata per M minuti
+
+    signal(postazioni_personale_A)
+
+    wait(mutex_A)
+    count_A--
+    signal(mutex_A)
+  } else {
+    sleep(minuti) // postazione occupata per M minuti
+
+    signal(postazioni_personale_B)
+    
+    wait(mutex_B)
+    count_B--
+    signal(mutex_B)
+  }
+}
+
+coordinatore(tipo_ricercatore) {
+  wait(ricercatore_in_attesa)
+
+  // 1 = ricercatore A; 2 = ricercatore B
+  if (tipo_ricercatore == 1) {
+    wait(mutex_A)
+
+    if(count_A < K){
+      signal(mutex_A)
+      wait(postazioni_personale_A)
+
+      wait(mutex_A)
+      count_A++
+      signal(mutex_A)
+
+      signal(assegnazione)
+    } else {
+      signal(mutex_A)
+
+      wait(mutex_full)
+      is_full = true
+      signal(mutex_full)
+
+      signal(assegnazione)
+    }
+  } else {
+    wait(mutex_B)
+    wait(postazioni_personale_B)
+    signal(mutex_B)
+
+    wait(mutex_B)
+    count_B++
+    signal(mutex_B)
+
+    signal(assegnazione)
+  }
+}

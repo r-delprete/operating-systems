@@ -1,0 +1,43 @@
+/**
+* Jurassic Park è costituito da un museo dei dinosauri e da un parco safari.
+* Nel parco ci sono M visitatori ed N autovetture monoposto (M>N).
+* I visitatori vagano per il museo per un po’, quindi si mettono in fila per salire 
+* in un'auto da safari.
+* Quando un'auto è disponibile, carica l'unico visitatore che può contenere e 
+* gira per il parco per un periodo di tempo casuale.
+* Se le N auto sono tutte fuori a portare i visitatori in giro, allora un visitatore 
+* che intende fare il safari in auto aspetta;
+* se un'auto è pronta per iniziare un nuovo giro ma non ci sono visitatori in 
+* attesa, l'auto attende
+*/
+
+semaforo contatore: visitatori_nel_parco = 0
+semaforo contatore: auto_safari = N
+semaforo binario: mutex = 1
+semaforo binario: sali_auto[N]
+semaforo binario: fine_corsa[N]
+
+veicolo(index_macchina) {
+  wait(visitatori_nel_parco)
+
+  wait(sali_auto[index_macchina])
+  // esegue la corsa
+  signal(fine_corsa[index_macchina])
+
+  signal(auto_safari)
+}
+
+visitatore() {
+  // vaga per il museo
+  sleep(rand(1, 5))
+
+  wait(mutex)
+  wait(auto_safari)
+  macchina = sem_getvalue(auto_safari) + 1
+  signal(mutex)
+  signal(visitatori_nel_parco)
+
+  signal(sali_auto[macchina])
+
+  wait(fine_corsa[macchina])
+}
