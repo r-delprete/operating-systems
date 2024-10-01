@@ -1,0 +1,49 @@
+Problema:
+In una fabbrica, N operai preparano piastrelle da far cuocere in un forno, capace di cuocerne M contemporaneamente. All'uscita dal forno K operai visionano le piastrelle per decorarle secondo tale sequenza di passi: se trova una piastrella difettata inizia a prenderne dal forno 2 alla volta, altrimenti ne prende 1 alla volta.
+
+var:
+
+	risorse[N] (:=1)
+	mutex,mutex2 : semaforo binario (:=0)
+	nuovo_processo : semaforo generico (:=0)
+
+scheduler()
+begin
+	repeat
+		wait(nuovo_processo)
+		wait(mutex2)
+		estrai dalla coda la struct del processo che ha priorità maggiore
+		nel caso di priorità uguale estrai la struct del processo con pid minore
+		signal(mutex2)
+		signal(PCB.attesa)
+	forever
+end
+
+
+
+processo()
+struct PCB
+	int pid
+	int priorità
+	semaforo binario attesa (:=0)
+	int ris
+begin
+	wait(mutex)
+	if (risorse[PCB.ris]==0) then
+		signal(mutex)
+		wait(mutex2)
+		metti PCB in coda (la coda viene ordinata con heapify in base a PCB.priorità)
+		signal(mutex2)
+		signal(nuovo_processo)
+		wait(PCB.attesa)
+	endif
+	wait(mutex)
+	risorse[PCB.ris]=0
+	signal(mutex)
+	...
+	usa risorsa
+	...
+	wait(mutex)
+	risorse[PCB.ris]=1
+	signal(mutex)	
+end

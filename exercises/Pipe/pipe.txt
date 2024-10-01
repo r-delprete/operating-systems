@@ -1,0 +1,139 @@
+/*Esercizio: scrivere un programma che esegua il comando di
+shell “ls- R | grep <pat>” dove <pat> è un pattern inserito
+dall’utente.
+Praticamente fa la lista di quello che c'e' nella directory e lo invia a grep che ritorna
+solo la lista dei file che hanno l'estensione "pat" che tipo e' .exe, .txt etc*/
+
+
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#define read 0
+#define write 1
+/*
+int main() {
+    int dscr[2];
+    pipe(dscr);
+    pid_t pr1;
+    pr1=fork();
+    if(pr1){
+        close(dscr[read] );
+        dup2(dscr[write], 1);
+        close(dscr[write]);
+        execlp("ls ","ls ","-R",NULL);
+
+    }
+    else if(!pr1){
+
+        close(dscr[write] );
+        dup2(dscr[read], 0);
+        close(dscr[read]);
+        execlp("grep","grep",argv[1],NULL);
+    }
+    exit(0);
+
+
+    return 0;
+}
+*/
+/*Implementare in C un programma che esegua la seguente pipeline:
+cat file.txt | tr'[[:space:]] [[:punct:]]''\n' | sort | uniq*/
+/*
+int main(){
+    int dscr1[2];
+    int dscr2[2];
+    int dscr3[2];
+
+    pipe (dscr1);
+    pipe (dscr2);
+    pipe (dscr3);
+    pid_t pid[3]={0};
+
+    pid[0]=fork();
+    if(pid[0]){
+        pid[1]=fork();
+    }
+    if(pid[1]){
+        pid[2]=fork();
+    }
+    if (pid[0] && pid[1] && pid[2]){
+        close(dscr1[read]);
+        dup2( dscr1[write], 1);
+        close(dscr1[write]);
+        execlp("cat","cat", "file.txt" , NULL);
+
+    }
+
+
+        else if (!pid[0] && !pid[1] && !pid[2]){
+        close(dscr1[write]);
+        dup2( dscr1[read], 0);
+        close(dscr1[read]);
+
+        close(dscr2[read]);
+        dup2(dscr2[write], 1);
+        close( dscr2[write]);
+        execlp( "tr" ,"tr", "'[[:space:]] [[:punct:]]'","\n" ,NULL);
+
+}
+        else if (pid[0] && !pid[1] && !pid[2]){
+        close(dscr1[read]);
+        close(dscr1[write]);
+
+        close(dscr2[write]);
+        dup2(dscr2[read], 0);
+        close(dscr2[read]);
+
+        close(dscr3[read]);
+        dup2(dscr3[write], 1);
+        close(dscr3[write]);
+        execlp("sort", "sort", NULL);
+
+
+
+}
+        else if (pid[0] && pid[1] && !pid[2]){
+            close(dscr1[read]);
+            close(dscr1[write]);
+            close(dscr2[read]);
+            close(dscr2[write]);
+
+            close(dscr3[write]);
+            dup2(dscr3[read], 0);
+            close(dscr3[read]);
+            execlp("uniq" , "uniq", NULL);
+
+
+}
+
+
+
+
+exit(0);
+}
+*/
+/*
+"wc","wc","-w" "ls","ls"
+
+int main(){
+    int dscr1[2];
+    pipe(dscr1);
+    pid_t pid1;
+    pid1=fork();
+    if(pid1) {
+        close (dscr1[read]);
+        dup2(dscr1[write], 1);
+
+        close(dscr1[write]);
+        execlp("wc","wc","-w" , NULL);
+    }
+    else if(!pid1) {
+        close(dscr1[write]);
+        dup2(dscr1[read], 0);
+        close(dscr1[read]);
+        execlp("ls", "ls", NULL);
+
+    }
+    exit(0);
+}*/

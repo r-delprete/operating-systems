@@ -1,0 +1,78 @@
+/*
+   In una pizzeria, due pizzaioli sfornano continuamente pizze che
+ pongono di volta in volta in uno di N piatti
+   disponibili su un bancone. I piatti sono prelevati da M (M<N)
+ camerieri che provvedono a servirle ai tavoli.
+   Ciascun cameriere può portare 2 pizze per volta, se disponibili, ma, 
+in caso di affollamento, i camerieri
+   preleveranno 3 pizze per volta. Fornire una soluzione con semafori e
+ discutere eventuali problemi di
+   starvation/deadlock.
+
+*/
+
+var pizzaiolo:
+   N := num_piatti
+   int buff[N];         //INIZIALIZZATO A 0  
+   int cont
+   
+var cameriere:
+   M := num_camerieri   //M SEMPRE MINORE DI N
+   
+   
+   
+mutex_pizze: semaforo_binario (:=1)
+
+sem_piatti_vuoti: semaforo_contatore (:=N)
+sem_piatti_pieni: semaforo_contatore (:=0)
+
+PRENDE_PIZZA(buff,N,num_piatti_presi)  //FUNZIONE CHE PRENDE BUFFER,N POSIZIONI, NUMERO PIATTI DA PRENDERE E RESTITUISCE NUM MAX PIATTI REALMENTE PRESI (QUINDI DISPONIBILI SU BANCONE)
+
+
+Pizziaolo()
+begin
+    
+    wait(sem_piatti_vuoti)
+    
+    wait(mutex_pizze)
+    
+    PRODUCE PIZZA(buff,N)   //INSERISCE PIZZA IN UNA POSIZIONE VUOTA DEL BANCONE (NEI PIATTI)  
+    cont++
+    
+    signal(mutex_pizze) 
+     
+    signal(sem_piatti_pieni)
+    
+end
+
+
+Cameriere()
+begin
+   
+   wait(sem_piatti_pieni)  
+   
+   wait(mutex_pizze)
+   
+   if(cont == N){
+      int i=0
+      
+      cont_piatti_presi = PRENDE_PIZZA(buff,N,3)
+      
+      while(i < cont_piatti_presi)
+         signal(sem_piatti_vuoti)
+   
+      cont-=cont_piatti_presi
+   }
+   else{
+      int i=0
+      cont_piatti_presi = PRENDE_PIZZA(buff,N,2)
+      while(i < cont_piatti_presi)
+         signal(sem_piatti_vuoti)
+      
+      cont-=cont_piatti_presi
+   }
+   
+   signal(mutex_pizze)
+   
+end
+

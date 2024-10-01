@@ -1,0 +1,93 @@
+/*N worker N/2 master. I-esimo master controlla worker (i*2)-esimo e (i*2+1)-esimo. 
+I master estraggono un numero intero nell'intervallo [1,N]. Il master che ha estratto il numero maggiore, 
+comunica ai propri worker di produrre ognuno un numero casuale di elementi. 
+Gli elementi sono prodotti uno alla volta e inseriti in un buffer singolo da cui il master legge. 
+Quando il master ha letto tutti gli elementi prodotti, il procedimento viene ripetuto nuovamente dall'inizio. */
+
+
+int N = ...
+int max=0
+int id_Worker_max=-1
+Mutex m = PTHREAD_MUTEX_INITIALIZER //non so se inizializzarlo o meno nello pseudocodice
+Mutex m2 = PTHREAD_MUTEX_INITIALIZER
+Semaforo Binario worker_addormentato[N] = 0
+Semaforo Binario blocco_master = 0
+Semaforo Binario pieno = 0
+Semaforo Binario vuoto = 1
+Semaforo Binario aspetto = 0
+int buffer[1] //buffer di un singolo elemento di tipo intero
+int cont_master = 0
+int flag_finito=0
+
+Master(i){ // N/2
+	int num=0
+	while(1){
+		num = rand(1...N)
+		lock(m)
+		if(num>max){
+			id_Worker_max = i
+			max=num
+		}
+		cont_master++	
+		unlock(m)
+		 
+		lock(m)
+		if(cont_master <= N/2){	//entrano tutti i master tranne l'ultimo 
+			unlock(m)
+			wait(blocco_master)			//blocca tutti i master che hanno scelto il numero ma che non sono l'ultimo Master
+		}
+		else{							//se sei l'ultimo Master
+			unlock(m)
+			for(j=0; j<N/2-1 ; j++)
+				signal(blocco_master)	//sveglia tutti gli altri N/2-1 master
+		}
+		
+		lock(m) 
+		if(id_Worker_max==i){ //sono il master che ha scelto il numero maggiore
+			max=0
+			id_Worker_max = -1
+			signal(worker_addormentato[i*2])
+			signal(worker_addormentato[i*2+1])
+			unlock(m)
+			
+			while(1){
+				wait(pieno)
+				printf("il buffer contiene: %d\n",buffer[0]) //stampa l'unico elemento del buffer prodotto da uno dei due worker
+											//buffer[0] non ha bisogno di un mutex perché è già protetto dai semafori vuoto e pieno
+				lock(m2)
+				if(flag_finito==2){ //se i 2 worker hanno finito, allora non c'è più nulla da stampare
+					flag_finito=0
+					unlock(m2)
+					signal(vuoto)
+					break	//esce dal while(1) di stampa dell'elemento del buffer
+				}
+				unlock(m2)
+				signal(vuoto)
+			}
+			
+			for(j=0; j<N/2-1; j++)
+				signal(aspetto) //sblocco tutti gli altri N/2-1 master perché il master del numero massimo ha smesso di stampare gli elementi dei suoi 
+		}						//2 worker, così si ricomincia il ciclo da capo dei master
+		else{
+			unlock(m)
+			wait(aspetto)	//gli altri master sono bloccati aspettando che il Master del numero massimo finisca di stampare gli elementi prodotti dai suoi 2 worker
+		}	
+	}
+}
+
+Worker(i){ // N
+	while(1){
+		wait(worker_addormentato[i]) //aspetta il master che ha pescato il numero massimo che lo svegli
+		
+		int num_casuale_elementi = rand (1...10) // il worker deve produrre un numero casuale di elementi.
+		for(j=0;j<num_casuale_elementi;j++){
+			wait(vuoto)
+			buffer[0] = rand(...)
+			signal(pieno)
+		}
+		lock(m2)
+		flag_finito++
+		unlock(m2)
+	}
+	
+}

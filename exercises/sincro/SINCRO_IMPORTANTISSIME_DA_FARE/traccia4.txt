@@ -1,0 +1,67 @@
+/*
+   Nei laboratori di DeepMind a Londra, ci sono N ricercatori che, dopo aver terminato il proprio lavoro,
+   ripongono i propri manuali in pila sulla propria scrivania. Una schiera di k < N robot, si muove tra le
+   scrivanie per prelevare i manuali e riporli negli slot liberi di tre librerie. Se una libreria non contiene slot
+   liberi per tutti i libri che il robot deve riporre, quest’ultimo passa ad esaminare la libreria successiva.
+   L’accesso alle librerie deve avvenire in modo esclusivo.
+   Una volta che tutti i robot hanno esaminato tutte le librerie e/o riposto tutti i libri, quelli che non sono
+   riusciti a riporre i propri libri accedono ad una quarta libreria situata in un’altra stanza, uno per volta, per
+   riporre i propri manuali (si assume che l’ultima libreria abbia slot per tutti i libri di ciascun robot).
+   Inoltre, questi ultimi robot riprendono il giro delle scrivanie fino a quando non vi sono più manuali sulle
+   scrivanie ed accederanno direttamente alla grande libreria nella stanza.
+   Si costruisca una soluzione che coordini l’accesso alle librerie da parte dei robot, usando gli opportuni
+   meccanismi di sincronizzazione.
+
+*/
+
+
+sem_ric = N
+sem_robot = K
+
+
+scrivanie[N]
+pos_lib=0
+
+Ricercatore()
+begin 
+    
+    if( libera(scrivanie) )
+    	aggiorna_scrivania(scrivanie)
+  	signal(sem_ric)
+end
+
+
+Robot()
+begin
+
+	//entreranno solo i robot che possono prendere qualcosa
+	wait(sem_ric)   
+   
+   
+	wait(mutex_robot)
+	  
+	while( piena(scrivanie[pos++]) )
+	   pila = prendiPila(pos)
+	   
+	signal(mutex_robot)
+
+
+
+	//ROBOT CHE HANNO PRESO LA PILA
+	wait(mutex_libreria)
+	if(pos_lib <= 3){
+	    Riponi(pila)
+	    pos_lib++
+	}
+	else{
+		                   //ROBOT CHE HANNO RIPOSTO NELLA 4 E DEVONO RICOMINCIARE IL CICLO
+	   RiponiAltraLibreria()   //RIPONE NELLA 4 LIBRERIA
+	   signal(sem_robot)
+	}
+	signal(mutex_libreria)
+
+
+end
+
+
+

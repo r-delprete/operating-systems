@@ -1,0 +1,61 @@
+In un sistema sono presenti N processi che si autoorganizzano per eleggere un processo P. Appena eletto, P assegna un numero casuale [0, M]
+con M >> N ad ognuno degli N-1 processi e successivamente produce 1 elemento. Il processo a cui è stato assegnato il numero più piccolo consuma
+l'elemento prodotto da P, mentre gli altri restano in attesa. Quando l'elemento è consumato, segnala P che assegna nuovi numeri ai processi e produce
+nuovamente, ripetendo il tutto. 
+
+mutex: mutex1
+semaforo_binario: consumato = 1
+semaforo_binario: prodotto = 0
+semaforo_binario: attesa = 0
+int: my_pid
+int: valori[N-1]
+bool: elezione = false
+int i, j, k 
+
+Processo N{
+parbegin
+	repeat
+
+	my_pid = getpid()						//il processo ennesimo salva il suo pid nella variabile my-pid
+	lock(mutex1)							//il processo eletto è quello che entra prima nella sezione critica
+		if elezione == false then{				//la prima volta controlla che l'elezione non sia stata fatta e salva il suo pid nel processo_produttore
+			processo_produttore = my_pid
+			elezione = true					//aggiorno la variabile elezione che uso come flag per sapere se devo di nuovo eleggere o no
+			unlock(mutex1)
+		}
+	else
+		unlock(mutex1)
+	
+	if (processo_produttore == my_pid) then{			//se il processo ennesimo ha il pid uguale al pid del processo eletto a produttore, entra nell'if
+		wait(consumato)						//wait sul
+		for i to N-1
+			valori[i] = rand(0 to M)
+		lock(mutex1)
+			k = 0
+			produce(elemento)
+			signal(prodotto)
+		unlock(mutex1)
+	}
+	else{
+		lock(mutex1)
+			pid_array[k] = mypid
+			k++
+		unlock(mutex1)
+
+		indice_min_processo = min(valori)
+
+		if (pid_array[indice_min_processo] == mypid){
+			wait(prodotto)
+			lock(mutex1)
+				consumo(elemento)
+				signal(consumato)
+			unlock(mutex1)
+			for i to N - 1
+				signal(attesa)
+		else{
+			wait(attesa)
+		}
+	}
+	forever
+parend
+}

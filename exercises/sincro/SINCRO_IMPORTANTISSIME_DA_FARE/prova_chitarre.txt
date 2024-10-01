@@ -1,0 +1,55 @@
+In un negozio di strumenti musicali ci sono al più M postazioni di prova per le chitarre.
+ Ogni potenziale cliente che trova posto
+può richiede uno di N modelli a disposizione, tenendo però presente che per 
+ogni modello ci sono solo C chitarre. 
+Si gestisca la distribuzione di chitarre usando semafori o variabili condizione
+ e discutere possibili deadlock o starvation.
+
+Ipotizzo che i clienti che non trovano posto vanno via e che se un cliente
+ richiede un modello esaurito allora è forzato a sceglierne un altro.
+
+mutex: mutex_CS
+semaforo: servizio = 0
+semaforo: chitarre[N] = K
+int: cliente_seduto = 0
+int: postazioni = M
+
+Adetto()
+begin
+	repeat
+	wait(cliente_seduto)
+	lock(mutex_CS)
+		cliente_attesa -= 1
+		signal(servizio)
+	unlock(mutex_CS)
+	cliente_servito()
+	forever
+end
+
+Cliente()
+begin
+	repeat
+	lock(mutex_CS)
+		if (cliente_attesa < postazioni) then
+			cliente_attesa += 1
+			signal(cliente_seduto)
+			unlock(mutex_CS)
+			wait(servizio)
+			lock(mutex_CS)
+				chitarra_scelta = rand(0, N-1)
+				while (chitarre[chitarra_scelta] == 0)
+					chitarra_scelta = rand(0, N-1)
+				chitarre[chitarra_scelta] -= 1
+			unlock(mutex_CS)
+			prova_chitarra()
+			lock(mutex_CS)
+				chitarre[chitarra_scelta] += 1
+			unlock(mutex_CS)
+		else
+			unlock(mutex_CS)
+			cliente_va_via()
+	forever			
+end
+			
+					
+				

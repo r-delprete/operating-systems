@@ -1,0 +1,45 @@
+/*
+  In un negozio di scarpe c’è un addetto che aiuta i clienti a provare i modelli di scarpe scelti. L’addetto può solo
+  aiutare un cliente per volta di K clienti che possono attendere in negozio, seduti su M sedie (K > M). Quando entra
+  un nuovo cliente, attende su una sedia libera, altrimenti lascia il negozio. L’addetto, in mancanza di clienti,
+  provvede ad aggiornare il database dei nuovi modelli di scarpe arrivati il giorno prima.   
+*/
+
+Non devo usare un semaforo contatore per le sedie perchè qui ho che il cliente si blocca sulle sedie e che eventualmente
+i primi M clienti entrano e non si bloccano, mentre il cliente M+1 si bloca sul semwait e ho un problema perchè il problema dice che se le
+sedie sono piene il cliente deve andare via invece di aspettare fuori. 
+
+mutex: accesso_risorse = 1
+semaforo: cliente_disp = 0
+semaforo: servizio = 0
+int: cliente_attesa = 0
+const sedie = M
+
+addetto()
+begin
+	repeat
+	wait(cliente_disp)
+	lock(accesso_risorse)
+		cliente_attesa = cliente_attesa - 1
+		signal(servizio)
+		if(cliente_attesa == 0)
+			aggiorna catalogo()
+	unlock(accesso_risorse)
+	cliente servito()
+	forever
+end
+
+
+
+cliente()
+begin
+	lock(accesso_risorse)
+		if(cliente_attesa < sedie) then
+			cliente_attesa = cliente_attesa + 1
+			signal(cliente_disp)	
+			unlock(accesso_risorse)
+			wait(servizio)
+			cliente servito()
+		else unlock(accesso risorse)
+			cliente va via()
+end

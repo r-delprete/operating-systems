@@ -1,0 +1,47 @@
+Nella sala recuitment di DeepMind, durante una sessione di interview, possono prendere posto N candidati, 
+mentre i restanti prenderanno parte alla sessione di interview successiva. Ogni candidato che ha trovato posto può 
+richiedere ad un addetto dell'azienda un computer portatile tra gli M modelli a disposizione, considerando che per ogni 
+modello ci sono K portatili. Quando tutti gli N candidati hanno ciascuno il poprio PC, hanno inizio le interview. 
+Le sessioni terminano quando finiscono i candidati in attesa.
+
+semaforo contatore: posti = N
+semaforo binario: scelta = 0
+semaforo binario: start_interview = 0
+semaforo binario: pc_ricevuto = 0
+mutex: mutex_CS
+int: portatili[M] = K
+
+Addetto()
+begin
+	repeat
+	wait(scelta)
+	lock(mutex_CS)
+		portatili[modello] -= 1
+		candidati_pronti += 1
+		signal(pc_ricevuto)
+	unlock(mutex_CS)
+
+	if(candidati_pronti == N) then
+		lock(mutex_CS)
+		for(i = 0 to N)
+			signal(start_interview)		
+		unlock(mutex_CS)
+	forever
+end
+
+
+Candidato()
+begin
+	wait(posti)
+	lock(mutex_CS)
+	do {
+    		modello=rand()%M;                       
+    		while (portatili[modello] != 0)
+    	}
+	signal(scelta)
+	unlock(mutex_CS)
+	wait(pc_ricevuto)
+	wait(start_interview)
+	candidato segue interview()
+	exit()
+end
