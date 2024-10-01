@@ -1,0 +1,63 @@
+/**
+* • In una fabbrica, N operai preparano piastrelle da far cuocere in 
+* un forno, capace di cuocerne M contemporaneamente. 
+* • All'uscita dal forno K operai visionano le piastrelle per decorarle 
+*   secondo tale sequenza di passi: 
+*     • se trova una piastrella difettata inizia a prenderne dal forno 2 alla volta
+*     • altrimenti ne prende 1 alla volta
+*/
+
+semaforo contatore: forno_pieno = 0
+semaforo contatore: forno_vuoto = M
+semaforo contatore: infornatore = N
+semaforo contatore: decoratore = K
+semaforo binario: mutex = 1
+int: buffer[1000]
+int index = 0
+
+operaioInfornatore() {
+  while(1) {
+    wait(infornatore)
+    wait(forno_vuoto)
+    
+    wait(mutex)
+    buffer[index++] = rand(0, 1)
+    signal(mutex)
+
+    signal(forno_pieno)
+    signal(infornatore)
+  }
+}
+
+operaioDecoratore() {
+  while(1) {
+    wait(decoratore)
+
+    wait(forno_pieno)
+
+    wait(mutex)
+    if (buffer[index] == 0) {
+      // piastrella difettata
+      signal(mutex)
+      wait(forno_pieno)
+
+      wait(mutex)
+      index -= 2
+      signal(mutex)
+
+      signal(forno_vuoto)
+      signal(forno_vuoto)
+    } else if (buffer[index] == 1) {
+      index--
+      signal(mutex)
+      signal(forno_vuoto)
+    } else {
+      signal(mutex)
+    }
+
+    // decora
+    signal(decoratore)
+
+    exit(0);
+  }
+}

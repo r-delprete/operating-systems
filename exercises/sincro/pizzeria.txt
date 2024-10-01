@@ -1,0 +1,94 @@
+/**
+* In una pizzeria, due pizzaioli sfornano continuamente pizze che
+* pongono di volta in volta in uno di N piatti disponibili su un bancone. I piatti sono prelevati da M (M<N) camerieri che provvedono a 
+* servirle ai tavoli. Ciascun cameriere può portare:
+*  • 2 pizze per volta, se disponibili;
+*  • ma, in caso di affollamento, i camerieri preleveranno 3 pizze per volta.
+*/
+
+semaforo contatore: piatti_disponibili = 2
+semaforo contatore: camerieri = M
+semaforo contatore: piatti_pieni = 0
+semaforo contatore: piatti_vuoti = N
+int: clienti = 0
+semaforo binario: mutex = 1
+semaforo binario: clientela_mutex = 1
+int: pizza_pronta = 0
+int: bancone[N] = 0
+int: posizione_bancone = 0
+bool: affollato = false
+
+clientela() {
+  clienti++
+
+  wait(clientela_mutex)
+
+  if (clientela >= 10) {
+    affollato = true
+  } else {
+    affollato = false
+  }
+
+  signal(clientela_mutex)
+}
+
+pizzaiolo() {
+  pizza = produciPizza()
+  
+  wait(piatti_vuoti)
+
+  wait(mutex)
+  bancone[posizione_bancone++] = pizza
+  signal(mutex)
+
+  signal(piatti_pieni)
+
+  wait(mutex)
+  pizza_pronta++
+  signal(mutex)
+}
+
+cameriere() {
+  while (1) {
+    wait(camerieri)
+
+    wait(mutex)
+    if (piatti_pieni >= 3 && affollato) {
+      for (int i = 0 to 3) {
+        // serve 3 piatti
+        wait(piatti_pieni)
+
+        // prelevo pizza da buffer
+        pizza = bancone[posizione_bancone--]
+        // servo pizza
+        
+        signal(piatti_vuoti)
+      }
+
+      wait(clientela_mutex)
+      clienti -= 3
+      signal(clientela_mutex)
+
+      signal(mutex)
+    } else {
+      for (int i to 2) {
+        // serve 2 piatti normale
+        wait(piatti_pieni)
+
+        // prelevo pizza da buffer
+        pizza = bancone[posizione_bancone--]
+        // servo pizza
+
+        signal(piatti_vuoti)
+      }
+
+      wait(clientela_mutex)
+      clienti -= 2
+      signal(clientela_mutex)
+
+      signal(mutex)
+    }
+    
+    signal(camerieri)
+  }
+}
