@@ -1,0 +1,123 @@
+/**
+* Un autobus è dotato di N posti a sedere ed M posti in piedi. 
+* L'accesso dei passeggeri all'autobus avviene mediante tre entrate: 
+* una posizionata in testa, una in coda ed una al centro.
+* Tutte le entrate possono essere utilizzate sia per salire che per 
+* scendere dall'autobus
+*/
+
+semaforo binario: porta_testa = 1
+semaforo binario: porta_centrale = 1
+semaforo binario: porta_coda = 1
+mutex: mutex_entrata = 1
+mutex: mutex_uscita = 1
+int: posti = N + M
+semaforo contatore: uscenti = 0
+
+passeggero_entrante() {
+  while(1) {
+    porta = rand(1, 3)
+
+    if (porta == 1) {
+      wait(porta_testa)
+
+      lock(mutex_entrata)
+      if (posti > 0) {
+        posti--
+        unlock(mutex_entrata)
+
+        signal(porta_testa)
+
+        sleep(5) // viaggia
+
+        signal(uscenti)
+      } else {
+        unlock(mutex_entrata)
+
+        signal(porta_testa)
+
+        exit(0)
+      }
+    } else if (porta == 2) {
+      wait(porta_centrale)
+
+      lock(mutex_entrata)
+      if (posti > 0) {
+        posti--
+        unlock(mutex_entrata)
+
+        signal(porta_centrale)
+
+        sleep(5) // viaggia
+
+        signal(uscenti)
+      } else {
+        unlock(mutex_entrata)
+
+        signal(porta_centrale)
+
+        exit(0)
+      }
+    } else {
+      wait(porta_coda)
+
+      lock(mutex_entrata)
+      if (posti  > 0) {
+        posti--
+        unlock(mutex_entrata)
+
+        signal(porta_coda)
+
+        sleep(5) // viaggia
+
+        signal(uscenti)
+      } else {
+        unlock(mutex_entrata)
+
+        signal(porta_coda)
+
+        exit(0)
+      }
+    }
+  }
+}
+
+passeggero_uscente() {
+  while(1) {
+    wait(uscenti)
+    
+    porta = rand(1, 3)
+
+    if (porta == 1) {
+      wait(porta_testa)
+      
+      lock(mutex_uscita)
+      posti++
+      unlock(mutex_uscita)
+
+      signal(porta_testa)
+
+      signal(uscita)
+    } else if (porta == 2) {
+      wait(porta_centrale)
+
+      lock(mutex_uscita)
+      posti++
+      unlock(mutex_uscita)
+
+      signal(porta_centrale)
+
+      signal(uscita)
+    } else {
+      wait(porta_coda)
+
+      lock(mutex_uscita)
+      posti++
+      unlock(mutex_uscita)
+
+      signal(porta_coda)
+
+      signal(uscita)
+    }
+  }
+}
