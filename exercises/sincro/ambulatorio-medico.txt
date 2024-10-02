@@ -1,0 +1,80 @@
+/**
+* Si consideri il seguente problema: In un ambulatorio medico lavorano due medici 
+* ed un infermiere. Inizialmente i due medici sono in attesa dell'arrivo dei pazienti. 
+* Un paziente entra nell'ambulatorio e si reca dal primo medico libero che esegue 
+* la visita medica. Al termine della visita, il medico redige un referto che inserisce in 
+* un portadocumenti con M posizioni. L'infermiere preleva un referto alla volta e lo 
+* inserisce nel database dell'ambulatorio. Se entrambi i medici sono impegnati, il 
+* paziente si accomoda nella sala d'aspetto che dispone di N sedie. Se le N sedie 
+* sono tutte occupate, il paziente lascia I'ambulatorio.
+*/
+
+semaforo contatore: medici = 2
+semaforo contatore: pazienti = 0
+semaforo binario: infermiere = 0
+semaforo binario: mutex = 1
+semaforo binario: fine_visita = 0
+semaforo contatore: posti_liberi = N
+semaforo contatore: posti_occupati = 0
+semaforo contatore: produci_referto = M
+semaforo contatore: referto_pronto = 0
+int: portadocumenti[M]
+int: count_pazienti = 0
+
+medico_process() {
+  while (1) {
+    wait(paziente)
+
+    sleep(5) // esegue visita
+
+    wait(produci_referto)
+
+    wait(mutex)
+    portadocumenti[count_pazienti++] = crea_referto() // crea ed inserisce referto nel portadocumenti
+    signal(referto_pronto)
+    signal(mutex)
+
+    signal(fine_visita)
+
+    signal(infermiere)
+
+    signal(medici)
+  }
+}
+
+infermiere_process() {
+  while(1) {
+    wait(infermiere)
+
+    wait(referto_pronto)
+
+    wait(mutex)
+    inserisci_referto(portadocumenti[count_pazienti--]) // inserisco referto nel db dell'ambulatorio
+    signal(produci_referto)
+    signal(mutex)
+  }
+}
+
+paziente_process() {
+  if (sem_getvalue(posti_occupati) < N) {
+    wait(posti_liberi)
+    
+    signal(posti_occupati)
+  
+    wait(medici)
+
+    signal(pazienti)
+    
+    wait(posti_occupati)
+    
+    // riceve visita
+
+    signal(posti_liberi)
+
+    wait(fine_visita)
+
+    exit(0)
+  } else {
+    exit(0)
+  }
+}
