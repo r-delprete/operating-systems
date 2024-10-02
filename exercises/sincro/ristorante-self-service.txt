@@ -1,0 +1,59 @@
+/**
+* In un ristorante self-service, i clienti, dopo aver mangiato, dispongono 
+* i vassoi in M contenitori, ognuno di K ripiani.
+* Periodicamente, un addetto sceglie un contenitore tra quelli in cui ci 
+* sono più ripiani liberi, lo svuota, lava i piatti e riporta il contenitore in 
+* sala.
+*/
+
+semaforo contatore: contenitore_disponibile = M
+semaforo contatore: ripiano_disponibile[M] = K
+semaforo binario: mutex = 1
+int: index_contenitore_libero = 0
+int: ripiani_contenitori[M] = 0
+int: vassoio = 1
+
+cliente_process() {
+  while(1) {
+    wait(contenitore_disponibile)
+
+    wait(mutex)
+    contenitore = index_contenitore_libero++
+    signal(mutex)
+
+    wait(ripiano_disponibile[contenitore])
+    ripiani_contenitori[contenitore] += vassoio
+
+    wait(mutex)
+    index_contenitore_libero--
+    signal(mutex)
+
+    signal(contenitore_disponibile)
+  }
+}
+
+addetto_process() {
+  while (1) {
+    sleep(rand(1, 2)) // periodicamente svuoto
+
+    min = inf
+    index = -1
+
+    for (i = 0 to M) {
+      wait(mutex)
+      if (ripiani_contenitori[i] <= min && ripiani_contenitori[i] != 0) {
+        signal(mutex)
+        index = i
+        min = ripiani_contenitori[i]
+      } else {
+        signal(mutex)
+      }
+    }
+
+    if (min != inf) {
+      for (i = 0 to min) {
+        signal(ripiano_disponibile[i])
+      }
+    }
+  }
+}
