@@ -1,0 +1,45 @@
+/**
+* Nella sala recruitment di una grande azienda informatica, durante una sessione di interview
+* possono prendere posto al piu' N candidati, mentre i restanti candidati prenderanno
+* parte alla sessione di interview successiva.
+* Ogni candidato che ha trovato posto sara' chiamato al tavolo delle interview.
+* L'addetto alle risorse umane attende fino che e' disponibile un candidato. 
+* Terminata l'intervista il candidato lascia il tavolo e la sala facendo posto al prossimo candidato.
+* Le sessioni di interview terminano quando non ci sono piu' candidati in attesa. 
+* Proporre una soluzione e discutere eventuali problemi di deadlock.
+*/
+
+semaforo contatore: posti_candidati = N
+semaforo binario: turno_interview = 0
+semaforo contatore: candidati = 0
+semaforo binario: fine_intervista = 0
+
+candidato_process() {
+  wait(posti_candidati)
+
+  signal(candidati)
+
+  wait(turno_interview)
+
+  wait(fine_intervista)
+
+  exit(0)
+}
+
+addetto_risorse_umane_process() {
+  while(1) {
+    wait(candidati)
+
+    signal(turno)
+
+    interview() // esegue intervista
+
+    signal(fine_intervista)
+
+    signal(posti_candidati)
+
+    if (sem_getvalue(candidati) == 0) {
+      exit(0)
+    }
+  }
+}
