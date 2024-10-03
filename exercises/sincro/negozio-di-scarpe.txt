@@ -1,0 +1,49 @@
+/**
+* In un negozio di scarpe c’è un addetto che aiuta i clienti
+* a provare i modelli di scarpe scelti. L’addetto può solo
+* aiutare un cliente per volta su K clienti che possono attendere
+* in negozio, seduti su M sedie (K > M). Quando entra
+* un nuovo cliente, attende su una sedia libera, altrimenti lascia
+* il negozio. L’addetto, in mancanza di clienti,
+* provvede ad aggiornare il database dei nuovi modelli di
+* scarpe arrivati il giorno prima.
+*/
+
+semaforo binario: addetto = 1
+semaforo contatore: clienti = 0
+semaforo contatore: sedie = M
+semaforo binario: fine_servizio = 0
+
+addetto_process() {
+  while (1) {
+    if (sem_getvalue(clienti) == 0) {
+      aggiorna_db_scarpe()
+    } else {
+      wait(clienti)
+
+      aiuta_cliente()
+
+      signal(fine_servizio)
+
+      signal(addetto)
+    }
+  }
+}
+
+cliente_process() {
+  if (sem_getvalue(clienti) < sem_getvalue(sedie)) {
+    wait(sedie)
+
+    wait(addetto)
+
+    shopping()
+
+    wait(fine_servizio)
+
+    exit(0)
+  } else {
+    exit(0)
+  }
+}
+
+

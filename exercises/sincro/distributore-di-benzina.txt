@@ -1,0 +1,86 @@
+/**
+* Un'area di servizio dispone di N distributori di benzina, M<N addetti
+* al rifornimento di carburante e P<M addetti al cambio d'olio. Una nuova macchina 
+* arrivata nell'area di servizio, si inserisce in una delle code corrispondenti ai distributori. 
+* Quando arriva il suo turno, comunica all'addetto al rifornimento la quantità di carburante e 
+* se intende cambiare l'olio. Terminato il rifornimento, se richiesto, l'addetto al rifornimento 
+* comunica ad un addetto al cambio d'olio di effettuare il servizio. 
+* In ogni caso, finito il rifornimento, l'automobile libera il distributore.
+* Si fornisca una soluzione usando semafori e processi. discutere la soluzione 
+* proposta in termini di possibili situazioni di starvation/deadlock e, nel caso, 
+* si propongano soluzioni ammissibili.
+*/
+
+semaforo contatore: distributori_benzina = N
+semaforo contatore: addetti_rifornimento = M
+semaforo contatore: addetti_cambio_olio = P
+semaforo contatore: servizio = 0
+/**
+* clienti[N] = 0 -> non c'è il cliente
+* clienti[N] = 1 -> cliente necessita rifornimento
+* clienti[N] = 2 -> cliente necessita cambio olio
+*/
+semaforo binario: cambio_olio = 0
+semaforo binario: fine_servizio = 0
+mutex: mutex = 1
+int: cliente_index = 0
+int: clienti[N] = 0
+
+macchina_process() {
+  while(1) {
+    wait(distributori_benzina)
+
+    wait(addetti_rifornimento)
+
+    lock(mutex)
+    clienti[cliente_index++] = rand(1, 2)
+    unlock(mutex)
+
+    signal(servizio)
+
+    wait(fine_servizio)
+
+    exit(0)
+  }
+}
+
+addetto_rifornimento_process(quantita_carburante) {
+  while(1) {
+    wait(servizio)
+
+    lock(mutex)
+    rifornisci_clienti(clienti[cliente_index])
+    unlock(mutex)
+    
+    signal(addetti_rifornimento)
+    signal(distributori_benzina)
+    
+    lock(mutex)
+    if (clienti[cliente_index] == 2) {
+      unlock(mutex)
+      signal(cambio_olio)
+    } else {
+      clienti[cliente_index--] = 0
+      unlock(mutex)
+      
+      signal(fine_servizio)
+    }
+  }
+}
+
+addetto_cambio_olio_process() {
+  while (1) {
+    wait(cambio_olio)
+
+    wait(addetti_cambio_olio)
+
+    lock(mutex)
+    cambia_olio(clienti[cliente_index])
+    clienti[cliente_index--] = 0
+    unlock(mutex)
+
+    signal(addetti_cambio_olio)
+
+    signal(fine_servizio)
+  }
+}
