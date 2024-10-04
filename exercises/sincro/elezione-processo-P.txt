@@ -1,0 +1,54 @@
+/**
+* In un sistema sono presenti N processi che si auto-organizzano per eleggere un processo P.
+* Appena eletto, P assegna un numero casuale [0, M] con M >> N ad ognuno degli N-1 processi 
+* e successivamente produce 1 elemento. Il processo a cui è stato assegnato 
+* il numero più piccolo consuma l'elemento prodotto da P, mentre gli altri restano in attesa. 
+* Quando l'elemento è consumato, segnala P che assegna nuovi numeri ai processi e produce
+* nuovamente, ripetendo il tutto.
+*/
+
+int valori[N - 1] = { 0 }
+semaforo binario: turno_consumer = 0
+semaforo binario: attendi_consumer = 0
+int: produttore = 0
+mutex: producer_mutex = 1
+mutex: valori_mutex = 1
+
+
+P_producer_process() {
+  while (1) {
+    lock(producer_mutex)
+    produttore = getpid()
+    unlock(producer_mutex)
+
+    lock(valori_mutex)
+    for (int i = 0 to N - 1) {
+      valori[i] = rand(0, M)
+    }
+    unlock(valori_mutex)
+
+    signal(turno_consumer)
+
+    wait(attendi_consumer)
+  }
+}
+
+consumers_process() {
+wait(turno_consumer)
+
+  lock(valori_mutex)
+  min_value_index = min(valori)
+
+  if (getpid() == min_value_index) {
+    consuma(valori[min_value_index])
+    unlock(valori_mutex)
+
+    signal(attendi_consumer)
+
+    exit(0)
+  } else {
+    unlock(valori_mutex)
+
+    exit(0)
+  }
+}
