@@ -10,11 +10,9 @@
 * Dopo aver attraversato il metal detector, il passeggero si dirige all'imbarco.
 */
 
-int: coda_passeggeri[N] = 0
-int: coda_metal_detector[M] = 0
+semaforo contatore: coda_passeggeri[N] = { 0 }
+semaforo contatore: coda_metal_detector[M] = { 0 }
 int: count_code_inferiori_K = 0
-mutex: mutex_coda_passeggeri = 1
-mutex: mutex_coda_metal_detector = 1
 mutex: mutex_code_inferiori_K = 1
 semaforo binario: turno_metal_detector = 0
 semaforo contatore: passeggeri = 0
@@ -23,20 +21,20 @@ passeggero_process() {
   min = inf
   ind = -1
 
-  lock(mutex_coda_passeggeri)
   for (int i = 0 to N) {
-    if (coda_passeggeri[i] < min) {
-      min = coda_passeggeri[i]
+    if (sem_getvalue(coda_passeggeri[i]) < min) {
+      min = sem_getvalue(coda_passeggeri[i])
       ind = i
     }
   }
-  coda_passeggeri[ind]++
-  unlock(mutex)
+  signal(coda_passeggeri[ind])
 
   signal(passeggeri)
 
   wait(turno_metal_detector)
 
+  wait(coda_metal_detector[getpid()])
+  
   passaggio_metal_detector()
 
   exit(0) // si imbarca
@@ -50,24 +48,20 @@ addetto_process() {
     if (count_code_inferiori_K < (M / 2)) {
       for (int j = 0 to N) {
         for (int i = 0 to M) {
-          lock(mutex_coda_metal_detector)
-          if (coda_metal_detector[i] < K) {
+          if (sem_getvalue(coda_metal_detector[i]) < K) {
             count_code_inferiori_K++
             unlock(mutex_code_inferiori_K)
             
-            coda_metal_detector[i]++
-            unlock(mutex_coda_metal_detector)
+            signal(coda_metal_detector[i])
 
-            lock(mutex_coda_passeggeri)
-            coda_passeggeri[j]--
-            unlock(mutex_coda_passeggeri)
+            wait(coda_passeggeri[j])
+
+            signal(turno_metal_detector)
           } else {
             unlock(mutex_coda_metal_detector)
           }
         }
       }
-
-      signal(turno_metal_detector)
     } else {
       unlock(mutex_code_inferiori_K)
     }
