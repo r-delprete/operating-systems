@@ -1,0 +1,53 @@
+/**
+* N studenti devono sostenere un esame universitario. 
+* La commissione d’esame è composta da due docenti ed un assistente. 
+* Ogni studente si reca da uno dei due docenti per sostenere l’esame e, se lo supera, 
+* passa dall’assistente per la registrazione.
+* Il numero di studenti in attesa di registrare l’esame non deve essere maggiore di K. 
+* Nel caso in cui ci siano già K studenti in attesa di registrazione,
+* i docenti sospendono gli esami in attesa che il numero di studenti in attesa dia minore di K/2 + 1.
+*/
+
+semaforo contatore: studenti = N
+semaforo contatore: docenti = 2
+semaforo binario: assistente_pronto = 1
+semaforo contatore: coda_registrazione = 0
+mutex: mutex_coda = 1
+
+docente_process() {
+  while(1) {
+    wait(docenti)
+    wait(studente)
+
+    esegui_esame()
+
+    signal(docenti)
+
+    lock(mutex_coda)
+    if (sem_getvalue(coda_registrazione) > K) {
+      unlock(mutex_coda)
+      wait(assistente_pronto)
+    } else {
+      unlock(mutex_coda)
+      signal(coda_registrazione)
+    }
+  }
+}
+
+assistente_process() {
+  while (1) {
+    lock(mutex_coda)
+    if (sem_getvalue(coda_registrazione) < K / 2 + 1) {
+      unlock(mutex_coda)
+      signal(assistente_pronto)
+    } else {
+      unlock(mutex_coda)
+    }
+
+    wait(coda_registrazione)
+
+    registro_voto_esame()
+
+    signal(assistente_pronto)
+  }
+}

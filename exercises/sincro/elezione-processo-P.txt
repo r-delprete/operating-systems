@@ -34,7 +34,7 @@ P_producer_process() {
 }
 
 consumers_process() {
-wait(turno_consumer)
+  wait(turno_consumer)
 
   lock(valori_mutex)
   min_value_index = min(valori)

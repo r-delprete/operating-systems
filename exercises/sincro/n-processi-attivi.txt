@@ -1,0 +1,102 @@
+/**
+* In un sistema sono attivi N (N multiplo di 3) processi che si auto-organizzano in tre gruppi seguendo il seguente
+* schema. Inizialmente tutti competono per entrare nel gruppo G1 ma solo N/3 vi accedono. I restanti processi
+* competono per entrare nel gruppo G2 ma solo N/3 vi accedono. I restanti N/3 processi sono assegnati al gruppo
+* G3. Creati i gruppi, i processi appartenenti al gruppo G1, a turno ed all'infinito, scelgono un gruppo random G
+* (G2 o G3), un numero random P in [0, N/3-1] e producono un elemento che verrà consumato dal processo P
+* appartenente al gruppo G.
+*/
+
+int: g1[N / 3], g2[N / 3], g3[N / 3]
+mutex: mutex_g1 = 1
+mutex: mutex_g2 = 1
+mutex: mutex_g3 = 1
+mutex: mutex_processID = 1
+mutex: mutex_random_process = 1
+mutex: mutex_random_group = 1
+mutex: mutex_element = 1
+int: processID = 0
+int: random_group = 0
+int: random_process = 0
+int: element = 0
+semaforo binario: turno_produzione = 1
+semaforo binario: turno_consumazione = 0
+semaforo_binario: fine_consumazione = 0
+
+gruppi_generator_process() {
+  lock(mutex_processID)
+
+  if (processID < N / 3) {
+    lock(mutex_g1)
+    g1[processID++] = processID
+    unlock(mutex_g1)
+    unlock(mutex_processID)
+  } else if (processID < 2 * N / 3) {
+    g2[processID++] = processID
+    unlock(mutex_g2)
+    unlock(mutex_processID)
+  } else if (processID < N) {
+    g3[processID++] = processID
+    unlock(mutex_g3)
+    unlock(mutex_processID)
+  }
+
+  signal(turno_produzione)
+}
+
+producer_process() {
+  while(1) {
+    wait(turno_produzione)
+
+    lock(mutex_g1)
+    if (getpid() in g1) {
+      unlock(mutex_g1)
+
+      lock(mutex_random_process)
+      random_process = rand(0, N / 3 - 1)
+      unlock(mutex_random_process)
+
+      lock(mutex_random_group)
+      random_group = scelgo_gruppo(g2, g3)
+      unlock(mutex_random_group)
+
+      lock(mutex_element)
+      element = rand(0, 10)
+      unlock(mutex_element)
+
+      signal(turno_consumazione)
+
+      wait(fine_consumazione)
+    } else {
+      unlock(mutex_g1)
+    }
+  }
+}
+
+consumer_process() {
+  while(1) {
+    wait(turno_consumazione)
+
+    lock(mutex_random_process)
+    if (random_process == getpid()) {
+      lock(mutex_random_group)
+      if (getpid() in random_group) {
+
+        if (random_group[random_process] == getpid()) {
+          unlock(mutex_random_process)
+          unlock(mutex_random_group)
+
+          lock(mutex_element)
+          consuma(element)
+          unlock(mutex_element)
+
+          signal(fine_consumazione)
+        }
+      } else {
+        unlock(mutex_random_group)
+      }
+    } else {
+      unlock(mutex_random_process)
+    }
+  }
+}
