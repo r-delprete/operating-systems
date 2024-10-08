@@ -1,0 +1,104 @@
+/**
+* Nella sala prove del giovane talentuoso chitarrista
+* Matteo Mancuso possono entrare e trovare posto seduto 
+* al più N appassionati chitarristi per una Masterclass con Matteo.
+* I partecipanti rimasti in piedi seguiranno il seminario successivo. 
+* Ogni allievo che ha trovato posto può richiedere ad un collaboratore 
+* di Matteo Mancuso un modello di chitarra degli M modelli messi a 
+* disposizione dalla casa produttrice, di cui Matteo Mancuso è 
+* testimonial, considerando che per ogni modello ci sono K chitarre.
+* Quando tutti gli N allievi hanno la propria chitarra, Matteo suona
+* un pezzo semplice chiedendo a tutti gli allievi di suonarlo insieme
+* a lui. La masterclass termina quando non ci sono più chitarristi in
+* attesa
+*/
+
+semaforo contatore: in_attesa = 0
+semaforo contatore: posti = N
+semaforo contatore: chitarre[M] = { K }
+mutex: mutex_chitarre = 1
+mutex: mutex_chitarre_scelte = 1
+mutex: mutex_modello = 1
+mutex: mutex_coda_attesa = 1
+semaforo contatore: chitarre_scelte = 0
+semaforo contatore: start_esibizione = 0
+semaforo binario: tutti_pronti = 0
+semaforo binario: addetto = 0
+
+candidato_process() {
+  signal(in_attesa)
+
+  wait(posti)
+
+  wait(in_attesa)
+
+  scelta = false
+
+  while(!scelta) {
+    lock(mutex_modello)
+    modello = rand(0, M)
+    
+    lock(mutex_chitarre)
+    if (sem_getvalue(chitarre[modello]) > 0) {
+      unlock(mutex_chitarre)
+      unlock(mutex_modello)
+
+      scelta = true
+    }
+    
+    unlock(mutex_chitarre)
+    unlock(mutex_modello)
+  }
+
+  signal(addetto)
+
+  wait(start_esibizione)
+
+  suona_pezzo()
+
+  lock(mutex_modello)
+  signal(chitarre[modello])
+  unlock(mutex_modello)
+
+  signal(posti)
+
+  exit(0)
+}
+
+addetto_process() {
+  while(1) {
+    wait(addetto)
+
+    lock(mutex_modello)
+    wait(chitarre[modello])
+    unlock(mutex_modello)
+
+    signal(chitarre_scelte)
+
+    lock(mutex_chitarre_scelte)
+    if (sem_getvalue(chitarre_scelte) == N) {
+      unlock(mutex_chitarre_scelte)
+
+      signal(tutti_pronti)
+    }
+    unlock(mutex_chitarre_scelte)
+  }
+}
+
+mancuso_process() {
+  wait(tutti_pronti)
+
+  esibizione()
+
+  for (int i = 0 to N) {
+    signal(start_esibizione)
+  }
+
+  lock(mutex_coda_attesa)
+  if (sem_getvalue(in_attesa) == 0 && sem_getvalue(posti) == N) {
+    unlock(mutex_coda_attesa)
+
+    exit(0)
+  }
+  unlock(mutex_coda_attesa)
+}

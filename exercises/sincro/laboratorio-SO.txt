@@ -1,0 +1,91 @@
+/**
+* Un laboratorio di Sistemi Operativi è gestito da un professore e due tutor.
+* Durante la lezione gli N alunni possono incontrare delle difficoltà nello svolgimento delle esercitazioni.
+* Un alunno in difficoltà chiede aiuto al tutor col minor numero di richieste, il quale, appena libero, si reca dall’alunno.
+* Nel caso in cui il tutor non riesca a risolvere il problema in T unità di tempo, lascia l’alunno che si rivolge al professore.
+* Risolta la difficoltà, l’alunno prosegue l’esercitazione fino alla fine della lezione.
+* Si supponga che la lezione inizi contemporaneamente per tutti gli alunni 
+* e che ogni alunno possa richiedere più volte l’aiuto dei tutor e del professore.
+*/
+
+semaforo contatore: tutor[2] = { 0 }
+semaforo binario: docente = 0
+semaforo binario: risolto = 0
+bool: fine_lezione = false
+mutex: mutex_lezione = 1
+mutex: mutex_tutor_1 = 1
+mutex: mutex_tutor_2 = 1
+mutex: mutex_time = 1
+
+alunno_process() {
+  while(1) {
+    lock(mutex_lezione)
+    if (fine_lezione) {
+      unlock(mutex_lezione)
+      
+      exit(0)
+    } else {
+      unlock(mutex_lezione)
+    }
+
+    problema = rand(0, 1)
+
+    lock(mutex_tutor_1)
+    lock(mutex_tutor_2)
+    if (problema == 1) {
+      if (sem_getvalue(tutor[0]) < sem_getvalue(tutor[1])) {
+        unlock(mutex_tutor_2)
+        unlock(mutex_tutor_1)
+
+        signal(tutor[0])
+
+        wait(risolto)
+      } else {
+        unlock(mutex_tutor_2)
+        unlock(mutex_tutor_1)
+
+        signal(tutor[1])
+
+        wait(risolto)
+      } else {
+        unlock(mutex_tutor_2)
+        unlock(mutex_tutor_1)
+      }
+    }
+  }
+}
+
+tutor_process(int tutorID) {
+  wait(tutor[tutorID])
+
+  lock(mutex_time)
+  time = rand(0, 2 * T)
+  
+  if (time > T) {
+    unlock(mutex_time)
+    signal(docente)
+
+    signal(tutor[tutorID])
+  } else {
+    unlock(mutex_time)
+    signal(risolto)
+  }
+}
+
+docente_process() {
+  while(1) {
+   timer = start_timer()
+
+    if (timer == 2 ore) {
+      lock(mutex_lezione)
+      fine_lezione = true
+      unlock(fine_lezione)
+    }
+
+    wait(docente)
+
+    risolvi_problema()
+
+    signal(risolto)
+  }
+}
