@@ -1,0 +1,85 @@
+/**
+* Un sistema è composto di un buffer di N posizioni, 2*N processi attivi ed un processo coordinatore. 
+* Il processo coordinatore estrae uno dopo l'altro in maniera casuale i numeri da 1 a N e ad ogni estrazione i 
+* processi competono per aggiudicarsi l'accesso alla posizione corrispondente del buffer, scrivendone il proprio PID. 
+* Un processo cha ha scritto il proprio PID nel buffer non partecipa più alla contesa. Quando tutte le posizioni del buffer 
+* sono state assegnate, il coordinatore si alterna con l’ultimo processo che ha avuto accesso al buffer nel leggere e stampare, 
+* uno alla volta, il contenuto del buffer.
+*/
+
+bool: disponibile[N] = { true }
+bool: letto[N] = { false }
+semaforo binario: fine_scrittura[N] = { 0 }
+int: buffer[N] = { 0 }
+int: index_estratto = 0
+mutex: mutex_index = 1
+mutex: mutex_counter = 1
+mutex: mutex_buffer = 1
+int: scritti_counter = 0
+int: last_access = 0
+semaforo binario: turno_coordinatore = 1
+semaforo binario: turno_processo = 0
+
+coordinatore_process() {
+  while (scritti_counter < N) {
+    lock(mutex_index)
+    index_estratto = rand(0, N)
+
+    if (disponibile[index_estratto]) {
+      wait(fine_scrittura[index_estratto])
+
+      last_access = index_estratto
+
+      scritti_counter++
+
+      disponibile[index_estratto] = true
+
+      unlock(mutex_index)
+    }
+
+    unlock(mutex_index)
+  }
+
+  while(!letto[last_access]) {
+    wait(turno_coordinatore)
+
+    lock(mutex_buffer)
+    stampa(buffer[last_access])
+    letto[last_access] = true
+    unlock(mutex_buffer)
+
+    signal(turno_processo)
+  }
+}
+
+competitore_process() {
+  scritto = false
+
+  while(!scritto) {
+    lock(mutex_counter)
+    if(scritti_counter == N) {
+      unlock(mutex_counter)
+      break
+    }
+
+    lock(mutex_index)
+    if (disponibile[index_estratto]) {
+      buffer[index_estratto] = getpid()
+      scritto = true
+      disponibile[index_estratto] = false
+      signal(fine_scrittura[index_estratto])
+      unlock(mutex_index)
+    }
+  }
+
+  while(!letto[last_access]) {
+    wait(turno_processo)
+
+    lock(mutex_buffer)
+    stampa(buffer[last_access])
+    letto[last_access] = true
+    unlock(mutex_buffer)
+
+    signal(turno_coordinatore)
+  }
+}

@@ -1,0 +1,86 @@
+/**
+* N worker N/2 master. I-esimo master controlla worker (i*2)-esimo e (i*2+1)-esimo. 
+* I master estraggono un numero intero nell'intervallo [1,N]. Il master che ha estratto il numero maggiore, 
+* comunica ai propri worker di produrre ognuno un numero casuale di elementi. 
+* Gli elementi sono prodotti uno alla volta e inseriti in un buffer singolo da cui il master legge. 
+* Quando il master ha letto tutti gli elementi prodotti, il procedimento viene ripetuto nuovamente dall'inizio.
+*/
+
+semaforo binario: sveglia_worker[N] = 0
+semaforo binario: worker_completato[N] = 0
+semaforo contatore: last_master = 0
+int: buffer[100] = { 0 }
+mutex: mutex_max = 1
+int: max = -1
+int: elements
+mutex: mutex_elements = 1
+bool: worker_flag
+mutex: mutex_flag
+
+master(index) {
+  while(1) {
+    num = rand(0, 100)
+
+    lock(mutex_max)
+    if (num > max) {
+      max = num
+      max_index = index
+    }
+    unlock(mutex_max)
+
+    if (i < N / 2) {
+      wait(last_master)
+    } else {
+      for (int i to N / 2) {
+        signal(last_master)
+      }
+    }
+
+    lock(mutex_max)
+    if (index == index_max) {
+      unlock(mutex_max)
+      
+      lock(mutex_elements)
+      element = rand(0, 10)
+      lock(mutex_elements)
+
+      signal(sveglia_worker[index * 2])
+
+      lock(mutex_flag)
+      worker_flag = true
+      unlock(mutex_flag)
+
+      signal(sveglia_worker[index * 2 + 1])
+
+      wait(worker_completato[index * 2])
+      wait(worker_completato[index * 2 + 1])
+
+      while(!empty(buffer)) {
+        stampa_buffer(buffer)
+      }
+
+      lock(mutex_max)
+      index_max = -1
+      max = -1
+      unlock(mutex_max)
+    }
+  }
+}
+
+worker(index) {
+  while (1) {
+    wait(sveglia_worker[index])
+
+    for (int i = 0 to elements) {
+      lock(mutex_flag)
+      if (worker_flag) {
+        buffer[i + elements] = rand(0, 50)
+      } else {
+        buffer[i] = rand(0, 50)
+      }
+      unlock(mutex_flag)
+    }
+
+    signal(worker_completato[index])
+  }
+}
