@@ -1,0 +1,50 @@
+/**
+* Un servizio di pool-car ha a disposizione N automobili, ognuna assegnata ad una zona della città.
+* Gli utenti del servizio si recano al punto di partenza e prenotano un posto sull'automobile per la zona desiderata.
+* Ogni automobile ha a disposizione M posti. Una volta occupati gli M posti, il veicolo parte per la zona stabilita.
+* Nel caso in cui sia trascorso un tempo T, a partire dalla prima prenotazione per una determinata zona, il veicolo parte per la zona assegnata.
+* Nel caso in cui non ci siano più posti disponibili su un veicolo, gli utenti in eccesso si mettono in attesa della prossima corsa per la zona desiderata.
+*/
+
+semaforo contatore: automobile[N] = M
+semaforo contatore: partenza[N] = 0
+semaforo contatore: arrivo[N] = 0
+semaforo binario: primo[N] = 0
+mutex: mutex_posti = 1
+
+automobile_process(int zona) {
+  while(1) {
+    wait(primo[zona])
+
+    time = start_timer()
+
+    lock(mutex_posti)
+    if (time > T || sem_getvalue(automobile[zona]) == 0) {
+      seduti = M - sem_getvalue(automobile[zona])
+      unlock(mutex_posti)
+
+      for (int i = 0 to seduti) {
+        signal(partenza[zona])
+      }
+      
+      viaggia()
+      
+      for (int i = 0 to seduti) {
+        signal(arrivo[zona])
+      }
+    }
+  }    
+}
+
+cliente_process() {
+  zona = rand(0, N)
+
+  wait(automobile[zona])
+  signal(primo[zona])
+  wait(partenza[zona])
+  wait(arrivo[zona])
+
+  signal(automobile[zona])
+
+  exit(0)
+}

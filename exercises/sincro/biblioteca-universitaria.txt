@@ -1,0 +1,96 @@
+/**
+* Una biblioteca universitaria dispone di N posti per la consultazione dei libri
+* e M (M < N) postazioni multimediali per la ricerca dei volumi.
+* Ogni studente che accede alla biblioteca effettua la ricerca di un volume,
+* successivamente si reca dal bibliotecario per richiederne una copia ed infine occupa un posto per consultare il libro.
+* Si supponga che di ogni libro esistano K copie. Nel caso in cui non ci siano posti per la consultazione disponibili
+* o se le copie del libro scelte sono terminate, lo studente lascia la biblioteca.
+*/
+
+semaforo contatore: in_attesa = 0
+semaforo contatore: posti = N
+semaforo contatore: libri[M] = { K }
+int: volume = 0
+semaforo binario: esito_volume_scelto = 0
+semaforo binario: richiesta = 0
+mutex: mutex_libri = 1
+mutex: mutex_volume = 1
+mutex: mutex_esito = 1
+mutex: mutex_posti = 1
+bool: esito_richiesta = false
+
+studente_process() {
+  lock(mutex_esito)
+  esito = false
+  unlock(mutex_esito)
+  
+  signal(in_attesa)
+
+  lock(mutex_volume)
+  volume = rand(0, M)
+  unlock(mutex_volume)
+
+  signal(richiesta)
+
+  wait(esito_volume_scelto)
+
+  lock(mutex_esito)
+  if (esito) {
+    unlock(mutex_esito)
+
+    lock(mutex_posti)
+    if (sem_getvalue(posti) > 0) {
+      unlock(mutex_posti)
+
+      wait(posti)
+
+      wait(in_attesa)
+
+      consulta_libro()
+
+      lock(mutex_libri)
+      signal(libri[volume])
+      unlock(mutex_libri)
+
+      signal(posti)
+
+      exit(0)
+    } else {
+      unlock(mutex_posti)
+
+      lock(mutex_libri)
+      signal(libri[volume])
+      unlock(mutex_libri)
+
+      exit(0)
+    }
+  }
+  unlock(mutex_esito)
+
+  wait(in_attesa)
+
+  exit(0)
+}
+
+bibliotecario_process() {
+  while(1) {
+    wait(richiesta)
+
+    lock(mutex_libri)
+    lock(mutex_volume)
+    if (sem_getvalue(libri[volume]) > 0) {
+      unlock(mutex_libri)
+
+      lock(mutex_esito)
+      esito = true
+      unlock(mutex_esito)
+
+      wait(libri[volume])
+      unlock(mutex_volume)
+
+      signal(esito_volume_scelto)
+    }
+    unlock(mutex_libri)
+    unlock(mutex_volume)
+  }
+}

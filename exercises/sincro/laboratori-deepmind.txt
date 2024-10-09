@@ -1,0 +1,78 @@
+/**
+* Nei laboratori di DeepMind a Londra, ci sono N ricercatori che, dopo aver terminato il proprio lavoro,
+* ripongono i propri manuali in pila sulla propria scrivania. Una schiera di K < N robot, si muove tra le
+* scrivanie per prelevare i manuali e riporli negli slot liberi di tre librerie. Se una libreria non contiene slot
+* liberi per tutti i libri che il robot deve riporre, quest’ultimo passa ad esaminare la libreria successiva.
+* L’accesso alle librerie deve avvenire in modo esclusivo.
+* Una volta che tutti i robot hanno esaminato tutte le librerie e/o riposto tutti i libri, quelli che non sono
+* riusciti a riporre i propri libri accedono ad una quarta libreria situata in un’altra stanza, uno per volta, per
+* riporre i propri manuali (si assume che l’ultima libreria abbia slot per tutti i libri di ciascun robot).
+* Inoltre, questi ultimi robot riprendono il giro delle scrivanie fino a quando non vi sono più manuali sulle
+* scrivanie ed accederanno direttamente alla grande libreria nella stanza.
+* Si costruisca una soluzione che coordini l’accesso alle librerie da parte dei robot, usando gli opportuni
+* meccanismi di sincronizzazione.
+*/
+
+semaforo contatore: preleva_manuali = 0
+int: scrivanie[N] = { 0 }
+int: librerie[3] = { 30 }
+int: quarta_libreria = inf
+mutex: mutex_scrivanie = 1
+mutex: mutex_librerie = 1
+mutex: mutex_posizione = 1
+mutex: mutex_quarta_libreria = 1
+int: posizione = 0
+
+ricercatore_process() {
+  libri = rand(0, 10)
+
+  lock(mutex_scrivanie)
+  lock(mutex_posizione)
+  scrivanie[posizione++] = libri
+  unlock(mutex_posizione)
+  unlock(mutex_scrivanie)
+
+  signal(preleva_manuali)
+}
+
+robot_process() {
+  while(1) {
+    /**
+    * se non ci sono manuali da prelevare
+    * resterà in attesa nella grande libreria
+    */
+    wait(preleva_manuali)
+
+    index_first_desk_free = 0
+
+    lock(mutex_scrivanie)
+    for (int i = 0 to N) {
+      if (scrivanie[i] > 0) {
+        index_first_desk_free = i
+        break;
+      }
+    }
+
+    lock(mutex_libri)
+    da_riporre = scrivanie[index_first_desk_free]
+    scrivanie[index_first_desk_free] = 0
+    unlock(mutex_scrivanie)
+
+    for (int i = 0 to 3) {
+      lock(mutex_librerie)
+      if (librerie[i] > da_riporre) {
+        librerie[i] -= da_riporre
+        unlock(mutex_librerie)
+        da_riporre = 0
+      }
+      unlock(mutex_librerie)
+    }
+
+    if (da_riporre > 0) {
+      lock(mutex_quarta_libreria)
+      quarta_libreria -= da_riporre
+      da_riporre = 0
+      unlock(mutex_quarta_libreria)
+    }
+  }
+}
