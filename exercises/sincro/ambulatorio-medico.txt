@@ -13,6 +13,7 @@ semaforo contatore: medici = 2
 semaforo contatore: pazienti = 0
 semaforo binario: infermiere = 0
 semaforo binario: mutex = 1
+mutex: mutex_posti = 1
 semaforo binario: fine_visita = 0
 semaforo contatore: posti_liberi = N
 semaforo contatore: posti_occupati = 0
@@ -56,7 +57,9 @@ infermiere_process() {
 }
 
 paziente_process() {
+  lock(mutex_posti)
   if (sem_getvalue(posti_occupati) < N) {
+    unlock(mutex_posti)
     wait(posti_liberi)
     
     signal(posti_occupati)
@@ -75,6 +78,7 @@ paziente_process() {
 
     exit(0)
   } else {
+    unlock(mutex_posti)
     exit(0)
   }
 }
