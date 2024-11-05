@@ -1,0 +1,75 @@
+/**
+* Nella sala recruitment di DeepMind, durante una sessione di interview, possono prendere posto N candidati, 
+* mentre i restanti prenderanno parte alla sessione di interview successiva. Ogni candidato che ha trovato posto può 
+* richiedere ad un addetto dell'azienda un computer portatile tra gli M modelli a disposizione, considerando che per ogni 
+* modello ci sono K portatili. Quando tutti gli N candidati hanno ciascuno il proprio PC, hanno inizio le interview. 
+* Le sessioni terminano quando finiscono i candidati in attesa
+*/
+
+semaforo contatore: candidati = 0
+semaforo contatore: posti = N
+semaforo contatore: portatili_scelti = 0
+semaforo contatore: portatili[M] = { K }
+mutex: mutex_portatili = 1
+mutex: mutex_modello = 1
+semaforo contatore: candidati_pronti = 0
+semaforo binario: scelta_portatile = 0
+int: modello = 0
+
+candidato_process() {
+  signal(candidati)
+  
+  wait(posti)
+
+  wait(candidati)
+  
+  scelta = false
+  while (!scelta) {
+    lock(mutex_modello)
+    modello = rand(0, M)
+    unlock(mutex_modello)
+
+    lock(mutex_portatili)
+    if (sem_getvalue(portatili[modello]) > 0) {
+      unlock(mutex_portatili)
+      
+      scelta = true
+    } else {
+      unlock(mutex_portatili)
+    }
+  }
+
+  signal(scelta_portatile)
+  
+  wait(candidati_pronti)
+  
+  eseguo_interview()
+
+  lock(mutex_modello)
+  signal(portatili[modello])
+  unlock(mutex_modello)
+
+  signal(posti)
+
+  exit(0)
+}
+
+addetto_process() {
+  wait(scelta_portatile)
+
+  wait(portatili[modello])
+
+  signal(portatili_scelti)
+
+  lock(mutex_portatili)
+  if (sem_getvalue(portatili_scelti) == N) {
+    unlock(mutex_portatili)
+
+    for (int i = 0 to N) {
+      signal(candidati_pronti)
+    }
+  } else {
+    unlock(mutex_portatili)
+  }
+}
+
