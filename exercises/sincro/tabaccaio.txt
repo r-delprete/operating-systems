@@ -20,94 +20,62 @@
 * deadlock.
 */
 
-semaforo binario: pronto = 1, impiegato_1 = 0, impiegato_2 = 0, impiegato_3 = 0
-semaforo contatore: tabacco = inf, carta = inf, fiammiferi = inf
-mutex: mutex_tipo = 1
-int: tipo = 0
+carta_tabacco: sem binario = 0        // carta e tabacco disponibili
+tabacco_fiammiferi: sem binario = 0   // tabacco e fiammiferi disponibili
+carta_fiammiferi: sem binario = 0     // carta e fiammiferi disponibili
+terminato: sem binario = 0
+impiegato_1: sem binario = 0  // responsabile tabacco
+impiegato_2: sem binario = 0  // responsabile carta
+impiegato_3: sem binario = 0  // responsabile fiammiferi
+carta: sem contatore = inf
+tabacco: sem contatore = inf
+fiammiferi: sem contatore = inf
 
-fumatore_process() {
+fumatore_1_process() {
   while(1) {
-    lock(mutex_tipo)
-    tipo = rand(1, 3)
+    wait(carta_fiammiferi)
 
-    if (tipo == 1) {
-      unlock(mutex_tipo)
+    chiudi()
+    fuma()
 
-      wait(carta)
-      wait(fiammiferi)
+    signal(terminato)
+  }
+}
 
-      chiudi()
-      fuma()
+fumatore_2_process() {
+  while(1) {
+    wait(tabacco_fiammiferi)
 
-      signal(pronto)
-    } else if (tipo == 2) {
-      unlock(mutex_tipo)
+    chiudi()
+    fuma()
 
-      wait(tabacco)
-      wait(fiammiferi)
+    signal(terminato)
+  }
+}
 
-      chiudi()
-      fuma()
+fumatore_3_process() {
+  while(1) {
+    wait(carta_tabacco)
 
-      signal(pronto)
-    } else {
-      unlock(mutex_tipo)
+    chiudi()
+    fuma()
 
-      wait(tabacco)
-      wait(carta)
-
-      chiudi()
-      fuma()
-
-      signal(pronto)
-    }
+    signal(terminato)
   }
 }
 
 tabaccaio_process() {
   while(1) {
-    wait(pronto)
+    int tipo = rand(1, 3)
 
-    lock(mutex_tipo)
-    if (tipo == 1) {
-      unlock(mutex_tipo)
-
-      signal(impiegato_2)
-      signal(impiegato_3)
+    if (tipo == 1) {    
+      signal(carta_fiammiferi)
     } else if (tipo == 2) {
-      unlock(mutex_tipo)
-
-      signal(impiegato_1)
-      signal(impiegato_3)
+      signal(tabacco_fiammiferi)
     } else {
-      unlock(mutex_tipo)
-
-      signal(impiegato_1)
-      signal(impiegato_2)
+      signal(carta_tabacco)
     }
-  }
-}
 
-impiegato_1_process() {
-  while(1) {
-    wait(impiegato_1)
-
-    signal(tabacco)
-  }
-}
-
-impiegato_2_process() { 
- while (1){
-    wait(impiegato_2)
-
-    signal(carta)
-  }
-}
-
-impiegato_3_process() {
-  while(1) {
-    wait(impiegato_3)
-
-    signal(fiammiferi)
+    wait(terminato)
   }
 }
