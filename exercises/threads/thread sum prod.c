@@ -16,7 +16,7 @@ int **firstMatrix, **secondMatrix;
 int m, resultIndex = 0;
 int *resultVector;
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 pthread_t *threads, printThread;
@@ -64,7 +64,7 @@ void *sumProdRoutine(void *args)
     sum += firstMatrix[i][cols] * secondMatrix[i][cols];
   }
 
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&matrixMutex);
   resultVector[resultIndex] = sum;
   resultIndex++;
 
@@ -73,18 +73,18 @@ void *sumProdRoutine(void *args)
     pthread_cond_signal(&cond);
   }
 
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&matrixMutex);
 
   pthread_exit(NULL);
 }
 
 void *printVectorRoutine()
 {
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&matrixMutex);
 
   while (resultIndex < m)
   {
-    pthread_cond_wait(&cond, &mutex);
+    pthread_cond_wait(&cond, &matrixMutex);
   }
 
   printf("Result vector: \n");
@@ -95,7 +95,7 @@ void *printVectorRoutine()
   }
   printf("|\n");
 
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&matrixMutex);
   pthread_cond_broadcast(&cond);
 
   pthread_exit(NULL);

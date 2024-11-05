@@ -1,0 +1,98 @@
+/**
+* In un ristorante più persone siedono allo stesso tavolo e condividono B1 bottiglie di acqua
+* e B2 bottiglie di vino. La politica della mensa è che un operatore della mensa controlla 
+* se terminano le bottiglie e le sostituisce se vuote 
+* fino a quando le persone non decidono di lasciare il ristorante.
+* Si fornisca una soluzione usando semafori e processi. 
+* Discutere la soluzione proposta in termini di possibili situazioni di starvation/deadlock.
+*/
+
+mutex_acqua: mutex = 1
+mutex_vino: mutex = 1
+mutex_persone: mutex = 1
+bottiglie_acqua: int = B1
+bottiglie_vino: int = B2
+persone: int = 0
+refill: sem binario = 0
+
+persona_process() { 
+  lock(mutex_persone)
+  persone++
+  unlock(mutex_persone)
+
+  while(1) {
+    flag = rand(0, 10)
+
+    if (flag == 10) {
+      lock(mutex_persone)
+      persone--
+      unlock(mutex_persone)
+
+      exit()
+    }
+
+    scelta = rand(1, 2) // 1 = acqua, 2 = vino
+
+    if (scelta == 1) {
+      lock(mutex_acqua)
+      if (bottiglie_acqua > 0) {
+        bottiglie_acqua--
+        unlock(mutex_acqua)
+        bevo()
+      } else {
+        unlock(mutex_acqua)
+        wait(refill)
+
+        lock(mutex_acqua)
+        bottiglie_acqua--
+        unlock(mutex_acqua)
+
+        bevo()
+      }
+
+    } else {
+      lock(mutex_vino)
+      if (bottiglie_vino > 0) {
+        bottiglie_vino--
+        unlock(mutex_vino)
+        bevo()
+      } else {
+        unlock(mutex_vino)
+        wait(refill)
+
+        lock(mutex_vino)
+        bottiglie_vino--
+        unlock(mutex_vino)
+
+        bevo()
+      }
+      
+      
+    }
+  }
+}
+
+operatore_process() {
+  while(1) {
+    lock(mutex_persone)
+    if (persone == 0) {
+      unlock(mutex_persone)
+      exit()
+    }
+    unlock(mutex_persone)
+
+    lock(mutex_acqua)
+    if (bottiglie_acqua == 0) {
+      bottiglie_acqua = B1
+      signal(refill)
+    }
+    unlock(mutex_acqua)
+
+    lock(mutex_vino)
+    if (bottiglie_vino == 0) {
+      bottiglie_vino = B2
+      signal(refill)
+    }
+    unlock(mutex_vino)
+  }
+}

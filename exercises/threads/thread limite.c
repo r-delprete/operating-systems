@@ -4,7 +4,7 @@
 #include <time.h>
 #include <unistd.h>
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
 
 int counter = 0, limit;
@@ -13,17 +13,17 @@ void *somma()
 {
   for (int i = 0; i < 1000; i++)
   {
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&matrixMutex);
     counter += rand() % 50;
     if (counter >= limit)
     {
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&matrixMutex);
       pthread_cond_signal(&condition);
       pthread_exit(NULL);
     }
     else
     {
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&matrixMutex);
     }
   }
   pthread_exit(NULL);
@@ -31,12 +31,12 @@ void *somma()
 
 void *control()
 {
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&matrixMutex);
   while (counter < limit)
   {
-    pthread_cond_wait(&condition, &mutex);
+    pthread_cond_wait(&condition, &matrixMutex);
   }
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&matrixMutex);
   printf("Limite raggiunto!\n");
   pthread_exit(NULL);
 }

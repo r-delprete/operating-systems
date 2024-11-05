@@ -7,7 +7,7 @@ int coord[2] = {-1, -1};
 int key, rows, cols;
 int **matrix;
 pthread_t *threads;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief function per allocare dinamicamente una matrice
@@ -64,7 +64,7 @@ void searchRoutine(void *threadId)
   {
     if (matrix[(int)*myThreadId][j] == key)
     {
-      pthread_mutex_lock(&mutex);
+      pthread_mutex_lock(&matrixMutex);
       coord[0] = *myThreadId;
       coord[1] = j;
 
@@ -76,7 +76,7 @@ void searchRoutine(void *threadId)
           pthread_cancel(threads[i]);
         }
       }
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&matrixMutex);
     }
   }
   pthread_exit(NULL);

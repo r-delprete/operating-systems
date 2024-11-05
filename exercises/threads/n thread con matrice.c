@@ -42,7 +42,7 @@ struct threadInfo *insertedElements;
 int **matrix;
 int *vector;
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER;
 
 /**
  * @brief funzione per creare una matrice allocata dinamicamente
@@ -91,7 +91,7 @@ void *routine(void *args)
   int rows = *((int *)args);
   int random = rand() % cols;
 
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&matrixMutex);
 
   if (ind < n / 2)
   {
@@ -105,7 +105,7 @@ void *routine(void *args)
   {
     sem_post(full);
   }
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&matrixMutex);
 
   pthread_exit(NULL);
 }

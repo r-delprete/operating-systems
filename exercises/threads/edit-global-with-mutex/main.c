@@ -10,15 +10,15 @@
 #include "../../libs/lib.h"
 
 int globalVar;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER;
 
 void *routine(void *args)
 {
   for (int i = 0; i < 20; i++)
   {
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&matrixMutex);
     globalVar++;
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&matrixMutex);
     printf(".");
     fflush(stdout);
     sleep(1);
@@ -39,9 +39,9 @@ int main()
 
   for (int i = 0; i < 20; i++)
   {
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&matrixMutex);
     globalVar++;
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&matrixMutex);
     printf("o");
     fflush(stdout);
     sleep(1);

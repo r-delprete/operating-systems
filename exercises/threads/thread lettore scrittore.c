@@ -27,7 +27,7 @@ sem_t readSem;
 /**
  * @param mutex variabile per gestione di mutua esclusione
  */
-pthread_mutex_t mutex;
+pthread_mutex_t matrixMutex;
 
 /**
  * @param condition variabile di condizione per gestione thread
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
   sem_init(&writeSem, 0, 1);
   sem_init(&readSem, 0, 0);
 
-  pthread_mutex_init(&mutex, NULL);
+  pthread_mutex_init(&matrixMutex, NULL);
 
   pthread_cond_init(&condition, NULL);
 
@@ -104,7 +104,7 @@ int main(int argc, char **argv)
   sem_destroy(&readSem);
   sem_destroy(&writeSem);
 
-  pthread_mutex_destroy(&mutex);
+  pthread_mutex_destroy(&matrixMutex);
 
   pthread_cond_destroy(&condition);
 
@@ -136,31 +136,31 @@ void *reader()
     sem_wait(&readSem);
     read(filePointer, &buff, sizeof(buff));
     sem_post(&writeSem);
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&matrixMutex);
     counter++;
     if (counter == n)
     {
       pthread_cond_signal(&condition);
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&matrixMutex);
       pthread_exit(NULL);
     }
     else
     {
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&matrixMutex);
     }
   }
 }
 
 void *print()
 {
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&matrixMutex);
 
   while (counter < n)
   {
-    pthread_cond_wait(&condition, &mutex);
+    pthread_cond_wait(&condition, &matrixMutex);
   }
 
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&matrixMutex);
 
   printf("Operazioni concluse! Arrivederci dal thread %u", (unsigned int)pthread_self());
 

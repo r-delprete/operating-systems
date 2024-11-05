@@ -12,7 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <semaphore.h>
 
 struct Position
 {
@@ -28,7 +27,7 @@ struct ThreadData
   int elementsCounter;
 };
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 int **matrix;
 int *array;
@@ -95,7 +94,7 @@ void *getValuesFromMatrixRoutine(void *args)
 {
   int competenceRow = *((int *)args), competenceColumn = rand() % n;
 
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&matrixMutex);
   array[competenceRow % ((n + 1) / 2)] = matrix[competenceRow][competenceColumn];
 
   threadData[competenceRow].id = competenceRow;
@@ -111,18 +110,18 @@ void *getValuesFromMatrixRoutine(void *args)
     pthread_cond_signal(&cond);
   }
 
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&matrixMutex);
 
   return NULL;
 }
 
 void *printArrayRoutine(void *args)
 {
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&matrixMutex);
 
   while (elementsInserted < (n + 1) / 2)
   {
-    pthread_cond_wait(&cond, &mutex);
+    pthread_cond_wait(&cond, &matrixMutex);
   }
 
   printf("\nArray: ");
@@ -138,7 +137,7 @@ void *printArrayRoutine(void *args)
     printf("\nThread %d ha inserito elemento %d preso da posizione (%d, %d).\n", threadData[i].id, threadData[i].element, threadData[i].position.row, threadData[i].position.column);
   }
 
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&matrixMutex);
 
   printf("\n");
 
