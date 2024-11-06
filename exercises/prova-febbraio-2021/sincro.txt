@@ -1,0 +1,58 @@
+/**
+* In un negozio di scarpe c’è un addetto che aiuta i clienti a provare i modelli di scarpe scelti.
+* L’addetto può solo aiutare un cliente per volta di K clienti che possono attendere in negozio,
+* seduti su M sedie (K<M).
+* Quando entra un nuovo cliente, attende su una sedia libera, altrimenti  lascia  il  negozio.
+* L’addetto,  in  mancanza  di  clienti, provvede ad aggiornare il database 
+* dei nuovi modelli di scarpe arrivati il giorno prima.
+*/
+
+mutex_clienti: mutex = 1
+clienti_in: int = 0
+sedie: sem contatore = M
+attendi_scarpe: sem binario = 0
+fine_prova: sem binario = 0
+
+cliente_process() {
+  lock(mutex_clienti)
+  if (clienti_in <= K) {
+    clienti_in++
+    unlock(mutex_clienti)
+
+    wait(sedie)
+
+    signal(attendi_scarpe)
+
+    wait(fine_prova)
+
+    lock(mutex_clienti)
+    clienti_in--
+    unlock(mutex_clienti)
+
+    signal(sedie)
+  } else {
+    unlock(mutex_clienti)
+  }
+
+  exit()
+}
+
+addetto_process() {
+  while(1) {
+    lock(mutex_clienti)
+    if (clienti_in > 0) {
+      unlock(mutex_clienti)
+      
+      wait(attendi_scarpe)
+
+      servi_cliente()
+
+      signal(fine_prova)
+    } else {
+      unlock(mutex_clienti)
+
+      aggiorna_db_negozio()
+    }
+  }
+}
+
