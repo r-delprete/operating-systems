@@ -84,7 +84,7 @@ void printArray(int *array, int size)
   printf("\n");
 }
 
-void *matricialProductRoutine(void *args)
+void *matrixProductRoutine(void *args)
 {
   int index = *((int *)args);
 
