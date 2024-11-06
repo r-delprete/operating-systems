@@ -1,0 +1,105 @@
+buffer[N]: int = { 0 }
+mutex_buffer: mutex = 1
+attesa: var condition = 1
+max: int = 0
+mutex_max: mutex = 1
+index: int = 0
+mutex_index: mutex = 1
+consumato: sem binario = 0
+mutex_counter: mutex = 1
+counter: int = 0
+flag: boolean = false
+mutex_flag: mutex = 0
+master_sem: sem binario = 0
+repeat: var condition = 1
+repeat_flag: boolean = false
+mutex_repeat: mutex = 1
+
+slave_process() {
+  while(1) {
+    element = rand(1, N / 2)
+
+    lock(mutex_buffer)
+    lock(mutex_index)
+    if (buffer[index] == 0) {
+      buffer[index++] = element
+      unlock(mutex_buffer)
+      unlock(mutex_index)
+
+      lock(mutex_counter)
+      counter++
+
+      if (counter == N) {
+        signal(master_sem)
+      }
+      unlock(mutex_counter)
+    }
+    unlock(mutex_buffer)
+    unlock(mutex_index)
+
+    lock(mutex_flag)
+    while(!flag) {
+      cond_wait(attesa, mutex_flag)
+    }
+    unlock(mutex_flag)
+
+    lock(mutex_max)
+    if (max != 0) {
+      mangia(max)
+      signal(consumato)
+    }
+    unlock(mutex_max)
+
+    lock(mutex_repeat)
+    while(!repeat_flag) {
+      cond_wait(repeat, mutex_repeat)
+    }
+    unlock(mutex_repeat)
+  }
+}
+
+master_process() {
+  while(1) {
+    wait(master_sem)
+
+    lock(mutex_repeat)
+    repeat_flag = false
+    unlock(mutex_repeat)
+
+    lock(mutex_buffer)
+    for (int i = 0 to N) {
+      if (max_value < buffer[i]) {
+        max_value = buffer[i]
+      }
+    }
+    unlock(mutex_buffer)
+
+    lock(mutex_max)
+    max = max_value
+    unlock(mutex_max)
+
+    cond_broadcast(attesa)
+
+    wait(consumato)
+
+    lock(mutex_max)
+    max = 0
+    unlock(mutex_max)
+
+    lock(mutex_counter)
+    counter = 0
+    unlock(mutex_counter)
+
+    lock(mutex_flag)
+    flag = false
+    unlock(mutex_flag)
+
+    lock(mutex_buffer)
+    for (int i = 0 to N) {
+      buffer[i] = 0
+    }
+    unlock(mutex_buffer)
+
+    cond_broadcast(repeat)
+  }
+}
