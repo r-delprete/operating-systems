@@ -31,7 +31,7 @@ int **matrixGeneration(int rows, int cols)
   {
     for (int j = 0; j < cols; j++)
     {
-      matrix[i][j] = 1 + arc4random() % 10;
+      matrix[i][j] = 1 + rand() % 10;
     }
   }
 
@@ -165,7 +165,7 @@ int main(int argc, char **argv)
     int *args = malloc(sizeof(int));
     *args = i;
 
-    pthread_create(&threads[i], NULL, matricialProductRoutine, args);
+    pthread_create(&threads[i], NULL, matrixProductRoutine, args);
   }
 
   for (int i = 0; i < m; i++)

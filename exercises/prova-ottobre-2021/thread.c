@@ -16,6 +16,7 @@
 #include <math.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 typedef struct Position
 {
@@ -80,7 +81,7 @@ int **matrixGeneration(int rows, int cols)
   {
     for (int j = 0; j < cols; j++)
     {
-      matrix[i][j] = 1 + arc4random() % 10;
+      matrix[i][j] = 1 + rand() % 10;
     }
   }
 
@@ -200,7 +201,7 @@ int main(int argc, char **argv)
 
   if (argc != 2)
   {
-    printf("Error! Correct usage_: ./<filename> <n value>");
+    printf("Error! Correct usage_: ./<filename> <n value>\n");
     return -1;
   }
 
@@ -208,7 +209,7 @@ int main(int argc, char **argv)
 
   if (n % 2 != 0)
   {
-    printf("n value must be even");
+    printf("n value must be even\n");
     return -2;
   }
 
@@ -227,7 +228,7 @@ int main(int argc, char **argv)
     Position *coordinates = malloc(sizeof(Position));
 
     coordinates->row = i;
-    coordinates->column = arc4random() % n;
+    coordinates->column = rand() % n;
 
     pthread_create(&threads[i], NULL, getMatrixElementRoutine, coordinates);
   }
