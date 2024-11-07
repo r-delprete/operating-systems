@@ -1,0 +1,75 @@
+/**
+ * Un'area di servizio dispone di N distributori di benzina, M<N addetti al rifornimento di carburante e P<M addetti al cambio 
+ * d'olio. Una nuova macchina arrivata nell'area di servizio, si inserisce in una delle code corrispondenti ai distributori. Quando
+ * arriva il suo turno, comunica all'addetto al rifornimento la quantità di carburante e se intende cambiare l'olio. Terminato il 
+ * rifornimento, se richiesto, l'addetto al rifornimento comunica ad un addetto al cambio d'olio di effettuare il servizio. In ogni 
+ * caso, finito il rifornimento, l'automobile libera il distributore.  
+ * Si fornisca una soluzione usando semafori e processi e discutere la soluzione proposta in termini di possibili situazioni di 
+ * starvation/deadlock.
+ */
+
+distributori_benzina: sem contatore = N
+addetti_rifornimento: sem contatore = M
+addetti_olio: sem contatore = P
+fine_rifornimento: sem binario = 0
+rifornimento: sem contatore = 0
+cambio_olio_sem: sem contatore = 0
+mutex_olio: mutex = 1
+
+automobile_process() {
+  wait(distributori_benzina)
+
+  wait(addetti_rifornimento)
+
+  signal(rifornimento)
+
+  wait(fine_rifornimento)
+
+  signal(addetti_rifornimento)
+
+  signal(distributori_benzina)
+  
+  lock(mutex_olio)
+  cambio_olio = rand(0, 1)  // 1 = si, 0 = no
+  
+  if (cambio_olio) {
+    unlock(mutex_olio)
+
+    wait(fine_cambio_olio)
+  }  
+  unlock(mutex_olio)
+
+  exit()
+}
+
+addetto_rifornimento_process(quantita_carburante) {
+  while(1) {
+    wait(rifornimento)
+
+    rifornisci(quantita_carburante)
+
+    signal(fine_rifornimento)
+
+    lock(mutex_olio)
+    if (cambio_olio) {
+      unlock(mutex_olio)
+
+      wait(addetti_olio)
+
+      signal(cambio_olio_sem)
+    }
+    unlock(mutex_olio)
+  }
+}
+
+addetto_olio_process() {
+  while(1) {
+    wait(cambio_olio_sem)
+
+    cambia_olio()
+
+    signal(fine_cambio_olio)
+
+    signal(addetti_olio)
+  }
+}
