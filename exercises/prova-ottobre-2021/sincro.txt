@@ -1,0 +1,68 @@
+/**
+ * In un sistema sono presenti N processi che si auto-organizzano per eleggere un processo P. Appena eletto, P assegna un numero casuale [0, M] (M>>N)
+ * ad ognuno degli N-1 processi e successivamente produce un oggetto. Il processo a cui è stato assegnato il numero più grande consuma l'oggetto prodotto da P,
+ * mentre gli altri restano in attesa. Quando il processo con il numero più grande ha consumato l'oggetto, segnala P che assegna nuovi numeri 
+ * ai processi e produce un nuovo oggetto, e così via.
+ * Discutere la soluzione proposta in termini di possibili situazioni di starvation/deadlock e, nel caso, si propongano soluzioni ammissibili.
+ */
+
+eletto: int = 0;
+buffer[N]: int = { 0 }
+prodotto: int = 0
+id_processo_eletto: int = -1
+mutex_prodotto: mutex = 1
+mutex_buffer: mutex = 1
+mutex_eletto: mutex = 1
+attesa: var condition = 0
+consumato: sem binario = 0
+
+processo() {
+  while(1) {
+    lock(mutex_eletto)
+    if(!eletto) {
+      eletto = 1
+      id_processo_eletto = getpid()
+    }
+    
+    if (id_processo_eletto == getpid()) {
+      lock(mutex_buffer)
+      for (int i = 0 to N) {
+        buffer[i] = rand(0, M);
+      }
+      unlock(mutex_buffer)
+
+      lock(mutex_prodotto)      
+      prodotto = rand(0, M)
+      cond_signal_broadcast(attesa)
+      unlock(mutex_prodotto)
+
+      wait(consumato)
+
+      unlock(mutex_eletto)
+    } else {
+      unlock(mutex_eletto)
+
+      lock(mutex_prodotto)
+      while(prodotto == -1) {
+        cond_wait(attesa, mutex_prodotto)
+      }
+      
+      index = 0
+
+      lock(mutex_buffer)
+      for (int i = 0 to N) {
+        if (buffer[index] < buffer[i]) {
+          index = i
+        }
+      }
+      unlock(mutex_buffer)
+
+      if (index == getpid()) {
+        prodotto = -1 // consuma
+        signal(consumato)
+      }
+
+      unlock(mutex_prodotto)
+    }
+  }
+}

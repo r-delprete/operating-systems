@@ -53,14 +53,12 @@ sem_t *createSemaphoreIfNotExists(const char *semName, unsigned int initialValue
   {
     if (errno == EEXIST)
     {
-      // Il semaforo esiste già
       printf("Error: semaphore '%s' already exists.\n", semName);
 
       exit(EXIT_FAILURE);
     }
     else
     {
-      // Altro errore nell'apertura del semaforo
       perror("sem_open error: ");
       exit(EXIT_FAILURE);
     }
