@@ -6,7 +6,7 @@
 
 #define BUFFER_SIZE 10
 
-const char *mutexSemName = "/mutex";
+const char *matrixMutexSemName = "/mutex";
 const char *emptyItemsSemCounterName = "/numItemsEmpty";
 const char *storedItemsSemCounterName = "/numItemsStored";
 
@@ -61,7 +61,7 @@ void *consume(void *args)
 
 int main(int argc, char **argv)
 {
-  sem_unlink(mutexSemName);
+  sem_unlink(matrixMutexSemName);
   sem_unlink(emptyItemsSemCounterName);
   sem_unlink(storedItemsSemCounterName);
 
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 
   pthread_t producer, consumer;
 
-  threadInfo.mutex = sem_open(mutexSemName, O_CREAT | O_EXCL, FILE_MODE, 1);
+  threadInfo.mutex = sem_open(matrixMutexSemName, O_CREAT | O_EXCL, FILE_MODE, 1);
   threadInfo.emptyItemsSemCounter = sem_open(emptyItemsSemCounterName, O_CREAT | O_EXCL, FILE_MODE, BUFFER_SIZE);
   threadInfo.storedItemsSemCounter = sem_open(storedItemsSemCounterName, O_CREAT | O_EXCL, FILE_MODE, 0);
 
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
   {
     if (checkSemaphoreExistence(threadInfo.mutex))
     {
-      printf("Error: semaphore with name %s already exists\n", mutexSemName);
+      printf("Error: semaphore with name %s already exists\n", matrixMutexSemName);
     }
 
     if (checkSemaphoreExistence(threadInfo.emptyItemsSemCounter))
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
   sem_close(threadInfo.emptyItemsSemCounter);
   sem_close(threadInfo.storedItemsSemCounter);
 
-  sem_unlink(mutexSemName);
+  sem_unlink(matrixMutexSemName);
   sem_unlink(emptyItemsSemCounterName);
   sem_unlink(storedItemsSemCounterName);
 
