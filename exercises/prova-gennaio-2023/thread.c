@@ -14,21 +14,12 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <time.h>
+#include <stdbool.h>
 
-pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t arrayMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER, arrayMutex = PTHREAD_MUTEX_INITIALIZER;
+int **matrix, *array, m, n;
 
-int **matrix;
-int *array;
-int m, n;
-
-typedef enum
-{
-  false,
-  true
-} boolean;
-
-int **matrixGeneration(int rows, int cols, boolean hasToFill)
+int **matrixGeneration(int rows, int cols, bool hasToFill)
 {
   int **matrix = calloc(rows, sizeof(int *));
 
@@ -79,9 +70,7 @@ void matrixDeallocation(int **matrix, int rows)
 
 void *getMatrixMaxRoutine(void *args)
 {
-  int index = *((int *)args);
-
-  int max = -1;
+  int index = *((int *)args), max = -1;
 
   pthread_mutex_lock(&matrixMutex);
   for (int i = 0; i < m; i++)
@@ -93,11 +82,11 @@ void *getMatrixMaxRoutine(void *args)
   }
   pthread_mutex_unlock(&matrixMutex);
 
-  boolean inserted = false;
+  bool inserted = false;
   int arrayIndex = 0;
 
   pthread_mutex_lock(&arrayMutex);
-  while (inserted == false)
+  while (!inserted)
   {
     if (array[arrayIndex] == -1)
     {
@@ -111,6 +100,7 @@ void *getMatrixMaxRoutine(void *args)
 
   return NULL;
 }
+
 void *getArrayMaxRoutine(void *args)
 {
   int max = -1;
@@ -151,7 +141,7 @@ int main(int argc, char **argv)
   matrix = matrixGeneration(m, n, true);
   printMatrix(matrix, m, n);
 
-  pthread_t threads[n], lastThread;
+  pthread_t *threads = malloc(n * sizeof(pthread_t)), lastThread;
 
   for (int i = 0; i < n; i++)
   {
@@ -178,6 +168,7 @@ int main(int argc, char **argv)
 
   matrixDeallocation(matrix, m);
   free(array);
+  free(threads);
 
   return 0;
 }
