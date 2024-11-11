@@ -9,76 +9,84 @@
 * sono tutte occupate, il paziente lascia I'ambulatorio.
 */
 
-semaforo contatore: medici = 2
-semaforo contatore: pazienti = 0
-semaforo binario: infermiere = 0
-semaforo binario: mutex = 1
-mutex: mutex_posti = 1
-semaforo binario: fine_visita = 0
-semaforo contatore: posti_liberi = N
-semaforo contatore: posti_occupati = 0
-semaforo contatore: produci_referto = M
-semaforo contatore: referto_pronto = 0
-int: portadocumenti[M]
-int: count_pazienti = 0
+medici: sem contatore = 2
+infermiere: sem binario = 1
+pazienti: int = 0
+mutex_paz: mutex = 1
+in_attesa: sem contatore = 0
+fine_visita: sem binario = 0
+portadocs[M]: int = { 0 }
+index_write: int = 0
+index_read: int = 0
+mutex_portadocs: mutex = 1
+sedie: int = N
+mutex_sedie: mutex = 1
+produci_referto: sem contatore = M
+referto_pronto: sem binario = 0
+
+paziente_process() {
+  lock(mutex_sedie)
+  if (sedie > 0) {
+    sedie--
+    unlock(mutex_sedie)
+
+    lock(mutex_paz)
+    pazienti++
+    unlock(mutex_paz)
+
+    wait(medici)
+
+    signal(in_attesa)
+
+    wait(fine_visita)
+    
+    lock(mutex_paz)
+    pazienti--
+    unlock(mutex_paz)
+
+    exit(0)
+  } else {
+    unlock(mutex_sedie)
+    exit()
+  }
+}
 
 medico_process() {
-  while (1) {
-    wait(paziente)
+  while(1) {
+    wait(in_attesa)
 
-    sleep(5) // esegue visita
-
-    wait(produci_referto)
-
-    wait(mutex)
-    portadocumenti[count_pazienti++] = crea_referto() // crea ed inserisce referto nel portadocumenti
-    signal(referto_pronto)
-    signal(mutex)
+    visita_paziente()
 
     signal(fine_visita)
 
-    signal(infermiere)
-
     signal(medici)
+
+    wait(produci_referto)
+
+    referto = produci_referto()
+
+    lock(mutex_portadocs)
+    portadocs[index_write] = referto
+    index_write = 1 + index_write % M
+    unlock(mutex_portadocs)
+
+    wait(infermiere)
+
+    signal(referto_pronto)
   }
 }
 
 infermiere_process() {
   while(1) {
-    wait(infermiere)
-
     wait(referto_pronto)
 
-    wait(mutex)
-    inserisci_referto(portadocumenti[count_pazienti--]) // inserisco referto nel db dell'ambulatorio
+    lock(mutex_portadocs)
+    aggiorna_db(portadocs[index_read])
+    index_read = 1 - index_read % M
+    unlock(mutex_portadocs)
+
     signal(produci_referto)
-    signal(mutex)
-  }
-}
 
-paziente_process() {
-  lock(mutex_posti)
-  if (sem_getvalue(posti_occupati) < N) {
-    unlock(mutex_posti)
-    wait(posti_liberi)
-    
-    signal(posti_occupati)
-  
-    wait(medici)
-
-    signal(pazienti)
-    
-    wait(posti_occupati)
-    
-    // riceve visita
-
-    signal(posti_liberi)
-
-    wait(fine_visita)
-
-    exit(0)
-  } else {
-    unlock(mutex_posti)
-    exit(0)
+    signal(infermiere)
   }
 }
