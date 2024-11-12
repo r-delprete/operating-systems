@@ -5,49 +5,61 @@
 * passa dall’assistente per la registrazione.
 * Il numero di studenti in attesa di registrare l’esame non deve essere maggiore di K. 
 * Nel caso in cui ci siano già K studenti in attesa di registrazione,
-* i docenti sospendono gli esami in attesa che il numero di studenti in attesa dia minore di K/2 + 1.
+* i docenti sospendono gli esami in attesa che il numero di studenti in attesa sia minore di K/2 + 1.
 */
 
-semaforo contatore: studenti = N
-semaforo contatore: docenti = 2
-semaforo binario: assistente_pronto = 1
-semaforo contatore: coda_registrazione = 0
-mutex: mutex_coda = 1
+docenti: sem contatore = 2
+assistente: sem binario = 0
+studenti[N]: int = -1
+index_reg_voto: int = 0
+index_reg_esame: int = 0
+mutex_studenti: mutex = 1
+sospendi: var condition = 1
+studenti_in_attesa: int = 0
+mutex_studenti_in_attesa: mutex = 1
 
 docente_process() {
   while(1) {
     wait(docenti)
-    wait(studente)
 
-    esegui_esame()
+    lock(mutex_studenti)
+    studenti[index_reg_voto] = rand(0, 1)
+    index_reg_voto = 1 + index_reg_voto % N
+    unlock(mutex_studenti)
+
+    lock(mutex_studenti_in_attesa)
+    studenti_in_attesa++
+    if (studenti_in_attesa >= K) {
+      while (studenti_in_attesa >= (K / 2 + 1)) {
+        cond_wait(sospendi, mutex_studenti_in_attesa)
+      }
+    }
+    unlock(mutex_studenti_in_attesa)
+
+    signal(assistente)
 
     signal(docenti)
-
-    lock(mutex_coda)
-    if (sem_getvalue(coda_registrazione) > K) {
-      unlock(mutex_coda)
-      wait(assistente_pronto)
-    } else {
-      unlock(mutex_coda)
-      signal(coda_registrazione)
-    }
   }
 }
 
 assistente_process() {
-  while (1) {
-    lock(mutex_coda)
-    if (sem_getvalue(coda_registrazione) < K / 2 + 1) {
-      unlock(mutex_coda)
-      signal(assistente_pronto)
-    } else {
-      unlock(mutex_coda)
+  while(1) {
+    wait(assistente)
+
+    lock(mutex_studenti_in_attesa)
+    if (studenti_in_attesa > 0) {
+      lock(mutex_studenti)
+      if (studenti[index_reg_esame] == 1) {
+        registra_voto()
+      }
+      index_reg_esame = 1 + index_reg_esame % N
+      unlock(mutex_studenti)
+
+      studenti_in_attesa--
+      unlock(mutex_studenti_in_attesa)
+
+      cond_signal(sospendi)
     }
-
-    wait(coda_registrazione)
-
-    registro_voto_esame()
-
-    signal(assistente_pronto)
+    unlock(mutex_studenti_in_attesa)
   }
 }
