@@ -1,105 +1,155 @@
 /**
  * Si realizzi un programma in C e Posix sotto Linux che, utilizzando la
- * libreria Pthread
- * • lancia n thread per cercare un elemento in una matrice nxn di caratteri
- * • Ognuno dei thread cerca l'elemento in una delle righe della matrice
- * • Non appena un thread ha trovato l'elemento cercato, rende note agli altri
- * thread le coordinate dell'elemento e tutti i thread terminano (sono
- * cancellati)
+ * libreria Pthread:
+ *  • lancia n thread per cercare un elemento in una matrice nxn di caratteri
+ *  • Ognuno dei thread cerca l'elemento in una delle righe della matrice
+ *  • Non appena un thread ha trovato l'elemento cercato, rende note agli altri
+ *    thread le coordinate dell'elemento e tutti i thread terminano (sono
+ *    cancellati)
  */
 
-#include "../../libs/lib.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+#include <pthread.h>
+#include <stdbool.h>
 
-#define MAX_THREADS 16
-#define MATRIX_ROWS 5
-#define MATRIX_COLS 5
-
-struct
+typedef struct Position
 {
-  pthread_mutex_t mutex;
-  boolean isFound;
-  pthread_t *threads;
-  int **matrix;
-  int numberToSearch;
-  int threadsCompleted;
-} threadInfo = {PTHREAD_MUTEX_INITIALIZER};
+  int row, column;
+} Position;
 
-void *search(void *args)
+typedef struct SearchParams
 {
-  int index = *((int *)args);
-  free(args);
+  int elementToSearch;
+  Position elementPosition;
+} SearchParams;
 
-  pthread_mutex_lock(&threadInfo.mutex);
-  if (threadInfo.isFound)
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+int **inputMatrix, n;
+bool found = false;
+SearchParams searchParams;
+
+int **matrixGeneration(int rows, int cols)
+{
+  int **matrix = calloc(rows, sizeof(int *));
+
+  for (int i = 0; i < rows; i++)
   {
-    printf("Element already found, thread %d exiting...\n", index);
-    pthread_mutex_unlock(&threadInfo.mutex);
-
-    pthread_exit(0);
+    matrix[i] = calloc(cols, sizeof(int));
   }
-  pthread_mutex_unlock(&threadInfo.mutex);
 
-  for (int i = 0; i < MATRIX_ROWS; i++)
+  for (int i = 0; i < rows; i++)
   {
-    if (threadInfo.numberToSearch == threadInfo.matrix[index][i])
+    for (int j = 0; j < cols; j++)
     {
-      pthread_mutex_lock(&threadInfo.mutex);
-      if (!threadInfo.isFound)
-      {
-        printf("Element found by thread %d at row %d, col %d\n", index, index, i);
-        threadInfo.isFound = true;
-      }
-      pthread_mutex_unlock(&threadInfo.mutex);
-
-      return NULL;
+      matrix[i][j] = 1 + rand() % 10;
     }
   }
 
-  pthread_mutex_lock(&threadInfo.mutex);
-  threadInfo.threadsCompleted++;
-  pthread_mutex_unlock(&threadInfo.mutex);
+  return matrix;
+}
+
+void matrixDeallocation(int **matrix, int rows)
+{
+  for (int i = 0; i < rows; i++)
+  {
+    free(matrix[i]);
+  }
+  free(matrix);
+}
+
+void printMatrix(int **matrix, int rows, int cols)
+{
+  for (int i = 0; i < rows; i++)
+  {
+    for (int j = 0; j < cols; j++)
+    {
+      printf("%d\t", matrix[i][j]);
+    }
+    printf("\n");
+  }
+}
+
+void *searchRoutine(void *args)
+{
+  int threadID = *((int *)args);
+  free(args);
+
+  pthread_mutex_lock(&mutex);
+  if (found)
+  {
+    printf("Thread %d -> Element already found\n", threadID);
+    pthread_mutex_unlock(&mutex);
+    pthread_cancel(pthread_self());
+  }
+  else
+  {
+    for (int j = 0; j < n && !found; j++)
+    {
+      if (searchParams.elementToSearch == inputMatrix[threadID][j])
+      {
+        found = true;
+        searchParams.elementPosition.row = threadID;
+        searchParams.elementPosition.column = j;
+
+        printf("Thread %d -> Element %d found in position (%d, %d)\n",
+               threadID,
+               searchParams.elementToSearch,
+               searchParams.elementPosition.row,
+               searchParams.elementPosition.column);
+      }
+    }
+
+    if (!found)
+    {
+      printf("Thread %d -> Element %d not found\n", threadID, searchParams.elementToSearch);
+    }
+  }
+  pthread_mutex_unlock(&mutex);
 
   return NULL;
 }
 
 int main(int argc, char **argv)
 {
+  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
   srand(time(NULL));
 
-  threadInfo.matrix = matrixGeneration(MATRIX_ROWS, MATRIX_COLS, true);
-  printMatrix(threadInfo.matrix, MATRIX_ROWS, MATRIX_COLS);
-
-  if (argc != 3)
+  if (argc != 2)
   {
-    printf("Error! Correct usage is: ./<filename> <threads number> <character to search>\n");
-    return -1;
+    printf("Error! Correct usage: ./<filename> <n value>\n");
+    return EXIT_FAILURE;
   }
 
-  threadInfo.numberToSearch = atoi(argv[2]);
-  printf("\nElement to search = %d\n", threadInfo.numberToSearch);
+  n = atoi(argv[1]);
 
-  int numThreads = atoi(argv[1]) < MAX_THREADS ? atoi(argv[1]) : MAX_THREADS;
-  threadInfo.threads = calloc(numThreads, sizeof(pthread_t));
+  inputMatrix = matrixGeneration(n, n);
+  printf("Matrix\n");
+  printMatrix(inputMatrix, n, n);
+  printf("\n");
+  searchParams.elementToSearch = 1 + rand() % 10;
+  printf("Value to search = %d\n", searchParams.elementToSearch);
 
-  for (int i = 0; i < numThreads; i++)
+  pthread_t *threads = malloc(n * sizeof(pthread_t));
+
+  for (int i = 0; i < n; i++)
   {
-    int *index = malloc(sizeof(int));
-    *index = i;
-    pthread_create(&threadInfo.threads[i], NULL, search, (void *)index);
+    int *threadID = malloc(sizeof(int));
+    *threadID = i;
+    pthread_create(&threads[i], NULL, searchRoutine, threadID);
   }
 
-  for (int i = 0; i < numThreads; i++)
+  for (int i = 0; i < n; i++)
   {
-    pthread_join(threadInfo.threads[i], NULL);
+    pthread_join(threads[i], NULL);
   }
 
-  if (threadInfo.threadsCompleted == numThreads)
-  {
-    printf("Element %d not found\n", threadInfo.numberToSearch);
-  }
+  free(threads);
+  matrixDeallocation(inputMatrix, n);
 
-  matrixDeallocation(threadInfo.matrix, MATRIX_ROWS);
-  free(threadInfo.threads);
-
-  return 0;
+  return EXIT_SUCCESS;
 }
