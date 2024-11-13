@@ -7,48 +7,73 @@
 * nuovamente, ripetendo il tutto.
 */
 
-int valori[N - 1] = { 0 }
-semaforo binario: turno_consumer = 0
-semaforo binario: attendi_consumer = 0
-int: produttore = 0
-mutex: producer_mutex = 1
-mutex: valori_mutex = 1
+processi[N - 1]: int = { -1 }
+elemento: int = 0
+mutex_processi: mutex = 1
+mutex_elemento: mutex = 1
+produci: sem binario = 1
+consuma: sem binario = 0
+eletto: int = 0
+produttore: int = 0
+mutex_elezione: mutex = 1
+mutex_produttore: mutex = 1
 
-
-P_producer_process() {
-  while (1) {
-    lock(producer_mutex)
-    produttore = getpid()
-    unlock(producer_mutex)
-
-    lock(valori_mutex)
-    for (int i = 0 to N - 1) {
-      valori[i] = rand(0, M)
+P_process() {
+  while(1) {
+    lock(mutex_elezione)
+    if (eletto == 0) {
+      eletto = 1
+      produttore = getpid()
+      unlock(mutex_elezione)
+    } else {
+      unlock(mutex_elezione)
     }
-    unlock(valori_mutex)
+    
+    lock(mutex_produttore)
+    if (produttore == getpid()){
+      unlock(mutex_produttore)
+      
+      wait(produci)
 
-    signal(turno_consumer)
+      lock(mutex_processi)
+      for (int i = 0 to N - 1) {
+        processi[i] = rand(0, M)
+      }
+      unlock(mutex_processi)
 
-    wait(attendi_consumer)
+      lock(mutex_elemento)
+      elemento = produci()
+      unlock(mutex_elemento)
+
+      signal(consuma)
+    } else {
+      unlock(mutex_produttore)
+    }
   }
 }
 
-consumers_process() {
-  wait(turno_consumer)
+consumers_process(id) {
+  while(1) {
+    wait(consuma)
 
-  lock(valori_mutex)
-  min_value_index = min(valori)
+    min_id = -1
+    min_value = M + 1
 
-  if (getpid() == min_value_index) {
-    consuma(valori[min_value_index])
-    unlock(valori_mutex)
+    lock(mutex_processi)
+    for (int i = 0 to N - 1) {
+      if (min_value > processi[i]) {
+        min_value = processi[i]
+        min_id = i
+      }
+    }
+    unlock(mutex_processi)
 
-    signal(attendi_consumer)
+    if (min_id == id) {
+      lock(mutex_elemento)
+      consuma_elemento(elemento)
+      unlock(mutex_elemento)
 
-    exit(0)
-  } else {
-    unlock(valori_mutex)
-
-    exit(0)
+      signal(produci)
+    }
   }
 }
