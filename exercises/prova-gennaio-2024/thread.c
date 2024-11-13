@@ -13,53 +13,37 @@
 #include <stdlib.h>
 #include <time.h>
 
-struct Position
+typedef struct ThreadData
 {
-  int row;
-  int column;
-};
+  /**
+   * Number of elements inserted by each thread
+   */
+  int insertedElements;
 
-struct ThreadData
-{
+  /**
+   * Thread ID
+   */
   int id;
-  int element;
-  struct Position position;
-  int elementsCounter;
-};
+} ThreadData;
 
-pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-int **matrix;
-int *array;
-int n;
-struct ThreadData *threadData;
-int elementsInserted = 0;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+int n, arraySize, **inputMatrix, *resultArray, completed = 0;
+ThreadData *threadData;
 
-typedef enum
-{
-  false,
-  true
-} boolean;
-
-int **matrixGeneration(int rows, int cols, boolean hasToFill)
+int **matrixAllocation(int rows, int cols)
 {
   int **matrix = calloc(rows, sizeof(int *));
-
   for (int i = 0; i < rows; i++)
   {
     matrix[i] = calloc(cols, sizeof(int));
   }
 
-  // Filling matrix
-  if (hasToFill)
+  for (int i = 0; i < rows; i++)
   {
-    for (int i = 0; i < rows; i++)
+    for (int j = 0; j < cols; j++)
     {
-      for (int j = 0; j < cols; j++)
-      {
-        int randomNumber = 1 + rand() % 26;
-        matrix[i][j] = randomNumber;
-      }
+      matrix[i][j] = 1 + rand() % 10;
     }
   }
 
@@ -68,8 +52,6 @@ int **matrixGeneration(int rows, int cols, boolean hasToFill)
 
 void printMatrix(int **matrix, int rows, int cols)
 {
-  printf("Matrix:\n");
-
   for (int i = 0; i < rows; i++)
   {
     for (int j = 0; j < cols; j++)
@@ -86,60 +68,64 @@ void matrixDeallocation(int **matrix, int rows)
   {
     free(matrix[i]);
   }
-
   free(matrix);
 }
 
-void *getValuesFromMatrixRoutine(void *args)
+int *arrayAllocation(int size)
 {
-  int competenceRow = *((int *)args), competenceColumn = rand() % n;
+  return calloc(size, sizeof(int));
+}
 
-  pthread_mutex_lock(&matrixMutex);
-  array[competenceRow % ((n + 1) / 2)] = matrix[competenceRow][competenceColumn];
-
-  threadData[competenceRow].id = competenceRow;
-  threadData[competenceRow].element = matrix[competenceRow][competenceColumn];
-  threadData[competenceRow].position.row = competenceRow;
-  threadData[competenceRow].position.column = competenceColumn;
-  threadData[competenceRow].elementsCounter++;
-
-  elementsInserted++;
-
-  if (elementsInserted == (n + 1) / 2)
+void printArray(int *array, int size)
+{
+  for (int i = 0; i < size; i++)
   {
-    pthread_cond_signal(&cond);
+    printf("%d\t", array[i]);
   }
+  printf("\n");
+}
 
-  pthread_mutex_unlock(&matrixMutex);
+void *getRandomElementFromMatrixRoutine(void *args)
+{
+  int threadID = *((int *)args);
+  free(args);
+
+  pthread_mutex_lock(&mutex);
+
+  threadData[threadID].id = threadID;
+  if (resultArray[threadID % arraySize] == 0)
+  {
+    resultArray[threadID % arraySize] = inputMatrix[threadID][rand() % n];
+    threadData[threadID].insertedElements++;
+  }
+  completed++;
+
+  if (completed == arraySize)
+  {
+    pthread_cond_signal(&condition);
+  }
+  pthread_mutex_unlock(&mutex);
 
   return NULL;
 }
 
 void *printArrayRoutine(void *args)
 {
-  pthread_mutex_lock(&matrixMutex);
-
-  while (elementsInserted < (n + 1) / 2)
+  pthread_mutex_lock(&mutex);
+  while (completed < arraySize)
   {
-    pthread_cond_wait(&cond, &matrixMutex);
+    pthread_cond_wait(&condition, &mutex);
   }
 
-  printf("\nArray: ");
-  for (int i = 0; i < (n + 1) / 2; i++)
-  {
-    printf("%d\t", array[i]);
-  }
-  printf("\n");
+  printf("Array: ");
+  printArray(resultArray, arraySize);
 
   for (int i = 0; i < n; i++)
   {
-    printf("\nThread %d ha inserito %d elementi.", threadData[i].id, threadData[i].elementsCounter);
-    printf("\nThread %d ha inserito elemento %d preso da posizione (%d, %d).\n", threadData[i].id, threadData[i].element, threadData[i].position.row, threadData[i].position.column);
+    printf("Thread %d -> Number of elements inserted = %d\n", threadData[i].id, threadData[i].insertedElements);
   }
 
-  pthread_mutex_unlock(&matrixMutex);
-
-  printf("\n");
+  pthread_mutex_unlock(&mutex);
 
   return NULL;
 }
@@ -148,38 +134,48 @@ int main(int argc, char **argv)
 {
   srand(time(NULL));
 
+  if (argc != 2)
+  {
+    printf("Error! Correct usage: ./<filename> <n value>");
+    return EXIT_FAILURE;
+  }
+
   n = atoi(argv[1]);
+  arraySize = (n + 1) / 2;
 
-  int arraySize = (n + 1) / 2;
-  array = calloc(arraySize, sizeof(int));
-
-  threadData = calloc(n, sizeof(struct ThreadData));
-
-  pthread_t threads[n], lastThread;
-  int rows = n, cols = n;
-
-  matrix = matrixGeneration(rows, cols, true);
-  printMatrix(matrix, rows, cols);
+  inputMatrix = matrixAllocation(n, n);
+  printf("Matrix\n");
+  printMatrix(inputMatrix, n, n);
   printf("\n");
+
+  resultArray = arrayAllocation(arraySize);
+
+  pthread_t *threads = malloc((n + 1) * sizeof(pthread_t));
+  threadData = calloc(n, sizeof(ThreadData));
+  for (int i = 0; i < n; i++)
+  {
+    threadData[i].insertedElements = 0;
+  }
 
   for (int i = 0; i < n; i++)
   {
-    int *arg = malloc(sizeof(int));
-    *arg = i;
-    pthread_create(&threads[i], NULL, getValuesFromMatrixRoutine, arg);
+    int *threadID = malloc(sizeof(int));
+    *threadID = i;
+    pthread_create(&threads[i], NULL, getRandomElementFromMatrixRoutine, threadID);
   }
+
+  pthread_create(&threads[n], NULL, printArrayRoutine, NULL);
 
   for (int i = 0; i < n; i++)
   {
     pthread_join(threads[i], NULL);
   }
+  pthread_join(threads[n], NULL);
 
-  pthread_create(&lastThread, NULL, printArrayRoutine, NULL);
-  pthread_join(lastThread, NULL);
-
-  matrixDeallocation(matrix, rows);
-  free(array);
+  free(threads);
+  free(resultArray);
+  matrixDeallocation(inputMatrix, n);
   free(threadData);
 
-  return 0;
+  return EXIT_SUCCESS;
 }
