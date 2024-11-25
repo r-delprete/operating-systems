@@ -1,0 +1,47 @@
+/**
+ * In un negozio di strumenti musicali ci sono al più M postazioni di prova per le chitarre.
+ * Ogni potenziale cliente che trova posto può richiedere uno di N modelli a disposizione,
+ * tenendo però presente che per ogni modello ci sono solo C chitarre. 
+ * Si gestisca la distribuzione delle chitarre usando semafori e/o variabili di condizione
+ * e discutere, per la soluzione proposta, possibili situazioni di starvation/deadlock.
+ */
+
+postazioni: int = M
+mutex_postazioni: mutex = 1
+chitarre[N]: int = { C }
+mutex_chitarre[N]: array[mutex] = { 1 } // mutex per ogni modello
+cond_chitarre[N]: var condition = 1     // variabile di condizione per ogni modello
+
+cliente_process() {
+  lock(mutex_postazioni)
+  if (postazioni > 0) {
+    postazioni--
+    unlock(mutex_postazioni)
+
+    scelta = 0
+    modello = rand(0, N - 1)
+
+    lock(mutex_chitarre[modello])
+    while (chitarre[modello] <= 0) {
+      wait(cond_chitarre[modello], mutex_chitarre[modello]) // Aspetta disponibilità
+    }
+    chitarre[modello]--
+    unlock(mutex_chitarre[modello])
+
+    prova_chitarra(chitarre[modello])
+    
+    lock(mutex_chitarre)
+    chitarre[modello]++
+    cond_signal(cond_chitarre[modello])
+    unlock(mutex_chitarre)
+
+    lock(mutex_postazioni)
+    postazioni++
+    unlock(mutex_postazioni)
+
+    exit(0)
+  } else {
+    unlock(mutex_postazioni)
+    exit(0)
+  }
+}
