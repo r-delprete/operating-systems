@@ -7,41 +7,38 @@
  */
 
 postazioni: int = M
-mutex_postazioni: mutex = 1
-chitarre[N]: int = { C }
-mutex_chitarre[N]: array[mutex] = { 1 } // mutex per ogni modello
-cond_chitarre[N]: var condition = 1     // variabile di condizione per ogni modello
+chitarre[N] = { C }                     // C chitarre per N modelli
+mutex_postazioni: sem binario = 1       // mutex per le postazioni
+mutex_chitarra[N]: sem binario = { 1 }  // mutex per ogni modello di chitarra
+cond[N]: var condizione = { 1 }         // variabile di condizione per ogni modello di chitarra
 
 cliente_process() {
-  lock(mutex_postazioni)
-  if (postazioni > 0) {
-    postazioni--
-    unlock(mutex_postazioni)
+  while (1) {
+    wait(mutex_postazioni)
+    if (postazioni > 0) {
+      postazioni--                          // occupo la postazione
+      signal(mutex_postazioni)
 
-    scelta = 0
-    modello = rand(0, N - 1)
+      int modello = rand(0, N)
+      wait(mutex_chitarre[modello])
+      while (chitarre[modello] <= 0) {
+        signal(mutex_chitarre[modello])
+        cond_wait(cond_chitarre[modello])   // attendo disponibilità per quel modello
+      }
+      chitarre[modello]--
+      signal(mutex_chitarre[modello])
 
-    lock(mutex_chitarre[modello])
-    while (chitarre[modello] <= 0) {
-      wait(cond_chitarre[modello], mutex_chitarre[modello]) // Aspetta disponibilità
+      prova_chitarra(chitarre[modello])
+
+      wait(mutex_chitarre[modello])
+      chitarre[modello]++                   // libero quel modello di chitarra
+      cond_signal(cond_chitarre[modello])   // sveglio chi è in attesa di quel modello
+      signal(mutex_chitarre[modello])
+
+      wait(mutex_postazioni)
+      postazioni++                          // libero la postazione
+      signal(mutex_postazioni)
     }
-    chitarre[modello]--
-    unlock(mutex_chitarre[modello])
-
-    prova_chitarra(chitarre[modello])
-    
-    lock(mutex_chitarre)
-    chitarre[modello]++
-    cond_signal(cond_chitarre[modello])
-    unlock(mutex_chitarre)
-
-    lock(mutex_postazioni)
-    postazioni++
-    unlock(mutex_postazioni)
-
-    exit(0)
-  } else {
-    unlock(mutex_postazioni)
-    exit(0)
+    signal(mutex_postazioni)
   }
 }
