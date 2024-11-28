@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <time.h>
 
 pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t arrayMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -74,8 +75,6 @@ int *arrayGeneration(int size)
 
 void printArray(int *array, int size)
 {
-  printf("Array: ");
-
   for (int i = 0; i < size; i++)
   {
     printf("%d\t", array[i]);
@@ -84,11 +83,10 @@ void printArray(int *array, int size)
   printf("\n");
 }
 
-void *matrixProductRoutine(void *args)
+void *matricesProductRoutine(void *args)
 {
-  int index = *((int *)args);
-
-  int sum = 0;
+  int threadID = *((int *)args), sum = 0;
+  free(args);
 
   pthread_mutex_lock(&matrixMutex);
   for (int i = 0; i < p; i++)
@@ -97,7 +95,7 @@ void *matrixProductRoutine(void *args)
 
     for (int j = 0; j < n; j++)
     {
-      productSum += firstMatrix[index][j] * secondMatrix[j][i];
+      productSum += firstMatrix[threadID][j] * secondMatrix[j][i];
     }
 
     sum += productSum;
@@ -105,14 +103,16 @@ void *matrixProductRoutine(void *args)
   pthread_mutex_unlock(&matrixMutex);
 
   pthread_mutex_lock(&arrayMutex);
-  resultsArray[index] = sum;
-  completedRows++;
+  if (resultsArray[threadID] == -1)
+  {
+    resultsArray[threadID] = sum;
+    completedRows++;
+  }
 
   if (completedRows == m)
   {
     pthread_cond_signal(&cond);
   }
-
   pthread_mutex_unlock(&arrayMutex);
 
   return NULL;
@@ -126,9 +126,8 @@ void *printArrayRoutine(void *args)
     pthread_cond_wait(&cond, &arrayMutex);
   }
 
-  printf("\n");
+  printf("\nResult array: ");
   printArray(resultsArray, m);
-
   pthread_mutex_unlock(&arrayMutex);
 
   return NULL;
@@ -140,8 +139,8 @@ int main(int argc, char **argv)
 
   if (argc != 4)
   {
-    printf("Error! Correct usage is: ./<filename> <m value> <n value> <p value>");
-    return -1;
+    printf("Error! Correct usage: ./<filename> <m value> <n value> <p value>");
+    return EXIT_FAILURE;
   }
 
   m = atoi(argv[1]);
@@ -150,7 +149,6 @@ int main(int argc, char **argv)
 
   firstMatrix = matrixGeneration(m, n);
   secondMatrix = matrixGeneration(n, p);
-  resultsArray = arrayGeneration(m);
 
   printf("First matrix\n");
   printMatrix(firstMatrix, m, n);
@@ -158,28 +156,27 @@ int main(int argc, char **argv)
   printf("\nSecond matrix\n");
   printMatrix(secondMatrix, n, p);
 
-  pthread_t *threads = calloc(m, sizeof(pthread_t)), lastThread;
+  resultsArray = arrayGeneration(m);
+  pthread_t *threads = malloc((m + 1) * sizeof(pthread_t));
 
   for (int i = 0; i < m; i++)
   {
-    int *args = malloc(sizeof(int));
-    *args = i;
-
-    pthread_create(&threads[i], NULL, matrixProductRoutine, args);
+    int *threadID = malloc(sizeof(int));
+    *threadID = i;
+    pthread_create(&threads[i], NULL, matricesProductRoutine, threadID);
   }
+  pthread_create(&threads[m], NULL, printArrayRoutine, NULL);
 
   for (int i = 0; i < m; i++)
   {
     pthread_join(threads[i], NULL);
   }
+  pthread_join(threads[m], NULL);
 
-  pthread_create(&lastThread, NULL, printArrayRoutine, NULL);
-  pthread_join(lastThread, NULL);
-
+  free(threads);
   free(resultsArray);
   matrixDeallocation(firstMatrix, m);
   matrixDeallocation(secondMatrix, n);
-  free(threads);
 
-  return 0;
+  return EXIT_SUCCESS;
 }
