@@ -14,12 +14,19 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <time.h>
-#include <stdbool.h>
+#include <limits.h>
+#include <semaphore.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
-pthread_mutex_t matrixMutex = PTHREAD_MUTEX_INITIALIZER, arrayMutex = PTHREAD_MUTEX_INITIALIZER;
-int **matrix, *array, m, n;
+const char *matrixMutexSemName = "/matrix-mutex";
+const char *arrayMutexSemName = "/array-mutex";
+pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t arrayMutex = PTHREAD_MUTEX_INITIALIZER;
+int n, m, **inputMatrix, *resultArray, insertedMaxes = 0;
+sem_t *arraySemMutex, *matrixSemMutex;
 
-int **matrixGeneration(int rows, int cols, bool hasToFill)
+int **matrixGeneration(int rows, int cols)
 {
   int **matrix = calloc(rows, sizeof(int *));
 
@@ -28,16 +35,11 @@ int **matrixGeneration(int rows, int cols, bool hasToFill)
     matrix[i] = calloc(cols, sizeof(int));
   }
 
-  // Filling matrix
-  if (hasToFill)
+  for (int i = 0; i < rows; i++)
   {
-    for (int i = 0; i < rows; i++)
+    for (int j = 0; j < cols; j++)
     {
-      for (int j = 0; j < cols; j++)
-      {
-        int randomNumber = 1 + rand() % 26;
-        matrix[i][j] = randomNumber;
-      }
+      matrix[i][j] = 1 + rand() % 10;
     }
   }
 
@@ -46,8 +48,6 @@ int **matrixGeneration(int rows, int cols, bool hasToFill)
 
 void printMatrix(int **matrix, int rows, int cols)
 {
-  printf("Matrix:\n");
-
   for (int i = 0; i < rows; i++)
   {
     for (int j = 0; j < cols; j++)
@@ -58,117 +58,142 @@ void printMatrix(int **matrix, int rows, int cols)
   }
 }
 
+void printArray(int *array, int size)
+{
+  for (int i = 0; i < size; i++)
+  {
+    printf("%d\t", array[i]);
+  }
+  printf("\n");
+}
+
 void matrixDeallocation(int **matrix, int rows)
 {
   for (int i = 0; i < rows; i++)
   {
     free(matrix[i]);
   }
-
   free(matrix);
 }
 
-void *getMatrixMaxRoutine(void *args)
+int *arrayGeneration(int size)
 {
-  int index = *((int *)args), max = -1;
+  int *array = calloc(size, sizeof(int));
 
-  pthread_mutex_lock(&matrixMutex);
+  for (int i = 0; i < size; i++)
+  {
+    array[i] = -1;
+  }
+
+  return array;
+}
+
+void *matrixMaxesRoutine(void *args)
+{
+  int threadID = *((int *)args), localMax = INT_MIN;
+  free(args);
+
+  sem_wait(matrixSemMutex);
   for (int i = 0; i < m; i++)
   {
-    if (matrix[i][index] > max)
+    if (inputMatrix[i][threadID] > localMax)
     {
-      max = matrix[i][index];
+      localMax = inputMatrix[i][threadID];
     }
   }
-  pthread_mutex_unlock(&matrixMutex);
+  sem_post(matrixSemMutex);
 
-  bool inserted = false;
-  int arrayIndex = 0;
-
-  pthread_mutex_lock(&arrayMutex);
-  while (!inserted)
+  sem_wait(arraySemMutex);
+  resultArray[threadID] = localMax;
+  insertedMaxes++;
+  if (insertedMaxes == m)
   {
-    if (array[arrayIndex] == -1)
-    {
-      array[arrayIndex] = max;
-      inserted = true;
-    }
-
-    arrayIndex++;
+    pthread_cond_signal(&condition);
   }
-  pthread_mutex_unlock(&arrayMutex);
+  sem_post(arraySemMutex);
 
   return NULL;
 }
 
-void *getArrayMaxRoutine(void *args)
+void *arrayMaxRoutine(void *args)
 {
-  int max = -1;
+  int localMax = INT_MIN;
 
   pthread_mutex_lock(&arrayMutex);
+  while (insertedMaxes != m)
+  {
+    pthread_cond_wait(&condition, &arrayMutex);
+  }
+
+  sem_wait(arraySemMutex);
+  printf("\nMaxes array: ");
+  printArray(resultArray, m);
+
   for (int i = 0; i < m; i++)
   {
-    if (array[i] > max)
+    if (resultArray[i] > localMax)
     {
-      max = array[i];
+      localMax = resultArray[i];
     }
   }
-  pthread_mutex_unlock(&arrayMutex);
+  sem_post(arraySemMutex);
 
-  printf("\nMax array value: %d\n", max);
+  printf("Max of maxes: %d\n", localMax);
 
   return NULL;
 }
 
 int main(int argc, char **argv)
 {
+  sem_unlink(matrixMutexSemName);
+  sem_unlink(arrayMutexSemName);
+
   srand(time(NULL));
 
-  printf("Insert m value = ");
-  scanf("%d", &m);
-  printf("\n");
+  if (argc != 3)
+  {
+    printf("Error! Correct usage: ./<filename> <m value> <n value>\n");
+    return EXIT_FAILURE;
+  }
 
-  printf("Insert n value = ");
-  scanf("%d", &n);
-  printf("\n");
+  m = atoi(argv[1]);
+  n = atoi(argv[2]);
 
-  array = calloc(m, sizeof(int));
+  inputMatrix = matrixGeneration(m, n);
+  printf("Input Matrix\n");
+  printMatrix(inputMatrix, m, n);
+
+  resultArray = arrayGeneration(m);
+  pthread_t *threads = malloc((m + 1) * sizeof(pthread_t));
+
+  matrixSemMutex = sem_open(matrixMutexSemName, O_CREAT | O_EXCL, S_IRWXU, 1);
+  arraySemMutex = sem_open(arrayMutexSemName, O_CREAT | O_EXCL, S_IRWXU, 1);
+
+  pthread_create(&threads[m], NULL, arrayMaxRoutine, NULL);
+
   for (int i = 0; i < m; i++)
   {
-    array[i] = -1;
+    int *threadID = malloc(sizeof(int));
+    *threadID = i;
+    pthread_create(&threads[i], NULL, matrixMaxesRoutine, threadID);
   }
 
-  matrix = matrixGeneration(m, n, true);
-  printMatrix(matrix, m, n);
+  pthread_join(threads[m], NULL);
 
-  pthread_t *threads = malloc(n * sizeof(pthread_t)), lastThread;
-
-  for (int i = 0; i < n; i++)
-  {
-    int *arg = malloc(sizeof(int));
-    *arg = i;
-
-    pthread_create(&threads[i], NULL, getMatrixMaxRoutine, arg);
-  }
-
-  for (int i = 0; i < n; i++)
+  for (int i = 0; i < m; i++)
   {
     pthread_join(threads[i], NULL);
   }
 
-  printf("\nArray: ");
-  for (int i = 0; i < m; i++)
-  {
-    printf("%d\t", array[i]);
-  }
-  printf("\n");
-
-  pthread_create(&lastThread, NULL, getArrayMaxRoutine, NULL);
-  pthread_join(lastThread, NULL);
-
-  matrixDeallocation(matrix, m);
-  free(array);
   free(threads);
+  free(resultArray);
+  matrixDeallocation(inputMatrix, m);
 
-  return 0;
+  sem_close(matrixSemMutex);
+  sem_close(arraySemMutex);
+
+  sem_unlink(matrixMutexSemName);
+  sem_unlink(arrayMutexSemName);
+
+  return EXIT_SUCCESS;
 }

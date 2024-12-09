@@ -1,0 +1,47 @@
+/**
+ * Un venditore di gelati con un solo banco serve clienti in un parco. Se non ci sono clienti, il venditore si siede sulla panchina per fare bird watching, il suo passatempo preferito.
+ * Quando arriva un cliente, il venditore si alza e inizia a servire. Se ci sono più clienti in arrivo, essi devono aspettare in fila,
+ * ma la fila può contenere solo un certo numero di persone perché il gelataio non intende lavorare troppo e rinunciare al suo passatempo preferito.
+ */
+
+clienti: sem contatore = 0
+gelataio_disponibile: sem binario = 1
+mutex_coda: mutex = 1
+coda: int = 0
+clienti_max: int = 10
+servito: sem binario = 0
+
+gelataio_process() {
+  while(1) {
+    wait(clienti)                // va in attesa e fa bird watching
+        
+    lock(mutex_coda)
+    coda--
+    unlock(mutex_coda)
+    
+    servi()                      // serve il gelato ad un cliente in coda
+    
+    signal(servito)
+    
+    signal(gelataio_disponibile)
+  }
+}
+
+cliente_process() {
+  lock(mutex_coda)
+  if (coda < clienti_max) {
+    coda++                       // incrementa la coda
+    unlock(mutex_coda)
+
+    signal(cliente)              // segnala un nuovo cliente in attesa
+
+    wait(gelataio_disponibile)   // attende il gelataio
+
+    wait(servito)                // attende che venga servito
+
+    exit()                       // se ne va
+  } else {
+    unlock(mutex_coda)
+    exit()                       // se ne va 
+  }
+}
