@@ -13,9 +13,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <time.h>
-#include <math.h>
 #include <fcntl.h>
-#include <errno.h>
 #include <sys/stat.h>
 
 typedef struct ThreadInfo
@@ -36,22 +34,19 @@ sem_t *mutexSem, *completedSem;
 
 void *getMatrixElementRoutine(void *args)
 {
-  int threadID = *((int *)args);
+  int threadID = *((int *)args), column = rand() % n;
   free(args);
 
   sem_wait(mutexSem);
-  for (int i = 0; i < n; i++)
-  {
-    resultArray[threadID] = inputMatrix[threadID][i];
+  resultArray[threadID] = inputMatrix[threadID][column];
 
-    threadsInfos[threadID].threadID = threadID;
-    threadsInfos[threadID].row = threadID;
-    threadsInfos[threadID].column = i;
-    threadsInfos[threadID].element = inputMatrix[threadID][i];
-    threadsInfos[threadID].elementsInserted++;
-    printf("Thread %d has inserted element %d from position (%d, %d)\n", threadID, threadsInfos[threadID].element, threadID, threadsInfos[threadID].column);
-  }
+  threadsInfos[threadID].threadID = threadID;
+  threadsInfos[threadID].row = threadID;
+  threadsInfos[threadID].column = column;
+  threadsInfos[threadID].element = inputMatrix[threadID][column];
+  threadsInfos[threadID].elementsInserted++;
 
+  printf("Thread %d has inserted element %d from position (%d, %d)\n", threadID, threadsInfos[threadID].element, threadID, threadsInfos[threadID].column);
   printf("\n");
 
   completedRows++;
