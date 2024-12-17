@@ -18,250 +18,155 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-typedef struct Position
-{
-  int row;
-  int column;
-} Position;
-
 typedef struct ThreadInfo
 {
-  Position elementPosition;
-  int insertedElements;
   int threadID;
+  int row;
+  int column;
   int element;
+  int elementsInserted;
 } ThreadInfo;
 
-ThreadInfo *threadsInfo;
-int n, resultsArraySize, *resultsArray, **inputMatrix, insertedElementsCounter;
+ThreadInfo *threadsInfos;
+const char *mutexSemName = "/mutex";
 const char *completedSemName = "/completed";
-const char *matrixMutexSemName = "/matrix-mutex";
-const char *arrayMutexSemName = "/array-mutex";
-sem_t *matrixMutex, *completed, *arrayMutex;
+int **inputMatrix, *resultArray, completedRows = 0, n;
 
-/**
- * Function to create a semaphore if not exists
- * @param semName The semaphore name
- * @param initialValue The smaphore initial value
- * @return The semaphore open if semaphore not exists
- * or it will exit with EXIT_FAILURE
- */
-sem_t *createSemaphoreIfNotExists(const char *semName, unsigned int initialValue)
-{
-  sem_t *sem = sem_open(semName, O_CREAT | O_EXCL, S_IRWXU, initialValue);
-  if (sem == SEM_FAILED)
-  {
-    if (errno == EEXIST)
-    {
-      printf("Error: semaphore '%s' already exists.\n", semName);
-
-      exit(EXIT_FAILURE);
-    }
-    else
-    {
-      perror("sem_open error: ");
-      exit(EXIT_FAILURE);
-    }
-  }
-  return sem;
-}
-
-int **matrixGeneration(int rows, int cols)
-{
-  int **matrix = calloc(rows, sizeof(int *));
-
-  for (int i = 0; i < rows; i++)
-  {
-    matrix[i] = calloc(cols, sizeof(int));
-  }
-
-  for (int i = 0; i < rows; i++)
-  {
-    for (int j = 0; j < cols; j++)
-    {
-      matrix[i][j] = 1 + rand() % 10;
-    }
-  }
-
-  return matrix;
-}
-
-void matrixDeallocation(int **matrix, int rows)
-{
-  for (int i = 0; i < rows; i++)
-  {
-    free(matrix[i]);
-  }
-  free(matrix);
-}
-
-void printMatrix(int **matrix, int rows, int cols)
-{
-  for (int i = 0; i < rows; i++)
-  {
-    for (int j = 0; j < cols; j++)
-    {
-      printf("%d\t", matrix[i][j]);
-    }
-    printf("\n");
-  }
-}
-
-int *arrayAllocation(int size)
-{
-  return calloc(size, sizeof(int));
-}
-
-void printArray(int *array, int size)
-{
-  for (int i = 0; i < size; i++)
-  {
-    printf("%d\t", array[i]);
-  }
-  printf("\n");
-}
+sem_t *mutexSem, *completedSem;
 
 void *getMatrixElementRoutine(void *args)
 {
-  Position coordinates = *((Position *)args);
-
-  int element = 0, inserted = 0;
+  int threadID = *((int *)args);
   free(args);
 
-  sem_wait(matrixMutex);
-  element = inputMatrix[coordinates.row][coordinates.column];
-  sem_post(matrixMutex);
-
-  sem_wait(arrayMutex);
-  for (int i = 0; i < resultsArraySize && !inserted; i++)
+  sem_wait(mutexSem);
+  for (int i = 0; i < n; i++)
   {
-    if (resultsArray[i] == 0)
-    {
-      resultsArray[i] = element;
-      insertedElementsCounter++;
+    resultArray[threadID] = inputMatrix[threadID][i];
 
-      threadsInfo[coordinates.row].threadID = coordinates.row;
-      threadsInfo[coordinates.row].element = element;
-      threadsInfo[coordinates.row].insertedElements++;
-      threadsInfo[coordinates.row].elementPosition.row = coordinates.row;
-      threadsInfo[coordinates.row].elementPosition.column = coordinates.column;
-
-      inserted = 1;
-    }
+    threadsInfos[threadID].threadID = threadID;
+    threadsInfos[threadID].row = threadID;
+    threadsInfos[threadID].column = i;
+    threadsInfos[threadID].element = inputMatrix[threadID][i];
+    threadsInfos[threadID].elementsInserted++;
+    printf("Thread %d has inserted element %d from position (%d, %d)\n", threadID, threadsInfos[threadID].element, threadID, threadsInfos[threadID].column);
   }
 
-  if (insertedElementsCounter == resultsArraySize || insertedElementsCounter == n)
+  printf("\n");
+
+  completedRows++;
+
+  if (completedRows == n)
   {
-    sem_post(completed);
+    sem_post(completedSem);
   }
-  sem_post(arrayMutex);
+  sem_post(mutexSem);
 
   return NULL;
 }
 
-void *printInfoRoutine(void *args)
+void *printResultArrayRoutine(void *args)
 {
-  sem_wait(completed);
+  sem_wait(completedSem);
 
-  sem_wait(arrayMutex);
-
-  printf("\nArray: ");
-  printArray(resultsArray, resultsArraySize);
+  sem_wait(mutexSem);
+  printf("\nResult array: ");
+  for (int i = 0; i < n; i++)
+  {
+    printf("%d\t", resultArray[i]);
+  }
   printf("\n");
 
   for (int i = 0; i < n; i++)
   {
-    printf(
-        "Thread %d has inserted %d elements (element %d) got from (%d, %d)\n",
-        threadsInfo[i].threadID,
-        threadsInfo[i].insertedElements,
-        threadsInfo[i].element,
-        threadsInfo[i].elementPosition.row,
-        threadsInfo[i].elementPosition.column);
+    printf("\nThread %d has inserted %d elements\n", threadsInfos[i].threadID, threadsInfos[i].elementsInserted);
   }
 
-  sem_post(arrayMutex);
+  sem_post(mutexSem);
 
   return NULL;
 }
 
 int main(int argc, char **argv)
 {
+  sem_unlink(mutexSemName);
   sem_unlink(completedSemName);
-  sem_unlink(matrixMutexSemName);
-  sem_unlink(arrayMutexSemName);
-
-  completed = createSemaphoreIfNotExists(completedSemName, 0);
-  matrixMutex = createSemaphoreIfNotExists(matrixMutexSemName, 1);
-  arrayMutex = createSemaphoreIfNotExists(arrayMutexSemName, 1);
 
   srand(time(NULL));
 
   if (argc != 2)
   {
-    printf("Error! Correct usage_: ./<filename> <n value>\n");
-    return -1;
+    printf("Error! Correct usage: ./<filename> <n value>\n");
+    return EXIT_FAILURE;
   }
 
   n = atoi(argv[1]);
-
   if (n % 2 != 0)
   {
-    printf("n value must be even\n");
-    return -2;
+    printf("Error! n value must be even\n");
+    return EXIT_FAILURE;
   }
 
-  resultsArraySize = pow(n, 2) / 2;
+  mutexSem = sem_open(mutexSemName, O_CREAT | O_EXCL, S_IRWXU, 1);
+  completedSem = sem_open(completedSemName, O_CREAT | O_EXCL, S_IRWXU, 0);
 
-  inputMatrix = matrixGeneration(n, n);
-  resultsArray = arrayAllocation(resultsArraySize);
-  threadsInfo = malloc(n * sizeof(struct ThreadInfo));
   pthread_t *threads = malloc((n + 1) * sizeof(pthread_t));
-
-  printf("\nMatrix\n");
-  printMatrix(inputMatrix, n, n);
+  threadsInfos = calloc(n, sizeof(ThreadInfo));
+  inputMatrix = calloc(n, sizeof(int *));
+  resultArray = calloc(n, sizeof(int));
+  for (int i = 0; i < n; i++)
+  {
+    inputMatrix[i] = calloc(n, sizeof(int));
+  }
 
   for (int i = 0; i < n; i++)
   {
-    Position *coordinates = malloc(sizeof(Position));
-
-    coordinates->row = i;
-    coordinates->column = rand() % n;
-
-    pthread_create(&threads[i], NULL, getMatrixElementRoutine, coordinates);
+    resultArray[i] = -1;
+    for (int j = 0; j < n; j++)
+    {
+      inputMatrix[i][j] = 1 + rand() % 10;
+    }
   }
 
-  pthread_create(&threads[n], NULL, printInfoRoutine, NULL);
+  printf("Matrix\n");
+  for (int i = 0; i < n; i++)
+  {
+    for (int j = 0; j < n; j++)
+    {
+      printf("%d\t", inputMatrix[i][j]);
+    }
+    printf("\n");
+  }
+  printf("\n");
 
+  pthread_create(&threads[n], NULL, printResultArrayRoutine, NULL);
+  for (int i = 0; i < n; i++)
+  {
+    int *threadID = malloc(sizeof(int));
+    *threadID = i;
+    pthread_create(&threads[i], NULL, getMatrixElementRoutine, threadID);
+  }
+
+  pthread_join(threads[n], NULL);
   for (int i = 0; i < n; i++)
   {
     pthread_join(threads[i], NULL);
   }
 
-  pthread_join(threads[n], NULL);
-
+  free(resultArray);
+  for (int i = 0; i < n; i++)
+  {
+    free(inputMatrix[i]);
+  }
+  free(inputMatrix);
   free(threads);
-  free(resultsArray);
-  matrixDeallocation(inputMatrix, n);
+  free(threadsInfos);
 
-  sem_close(arrayMutex);
-  sem_close(completed);
-  sem_close(matrixMutex);
+  sem_close(mutexSem);
+  sem_close(completedSem);
 
-  if (completed != SEM_FAILED)
-  {
-    sem_unlink(completedSemName);
-  }
+  sem_unlink(mutexSemName);
+  sem_unlink(completedSemName);
 
-  if (matrixMutex != SEM_FAILED)
-  {
-    sem_unlink(matrixMutexSemName);
-  }
-
-  if (arrayMutex != SEM_FAILED)
-  {
-    sem_unlink(arrayMutexSemName);
-  }
-
-  return 0;
+  return EXIT_SUCCESS;
 }
