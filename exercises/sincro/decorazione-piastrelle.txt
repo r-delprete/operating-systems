@@ -1,11 +1,11 @@
-a/**
-* In una fabbrica, N operai preparano piastrelle da far cuocere in 
-* un forno, capace di cuocerne M contemporaneamente. 
-* All'uscita dal forno K operai visionano le piastrelle per decorarle 
-* secondo tale sequenza di passi: 
-*   • se trova una piastrella difettata inizia a prenderne dal forno 2 alla volta
-*   • altrimenti ne prende 1 alla volta
-*/
+/**
+ * In una fabbrica, N operai preparano piastrelle da far cuocere in 
+ * un forno, capace di cuocerne M contemporaneamente. 
+ * All'uscita dal forno K operai visionano le piastrelle per decorarle 
+ * secondo tale sequenza di passi: 
+ *   • se trova una piastrella difettata inizia a prenderne dal forno 2 alla volta
+ *   • altrimenti ne prende 1 alla volta
+ */
 
 forno_pieno: sem contatore = 0
 forno_vuoto: sem contatore = M
@@ -46,6 +46,7 @@ decoratore_process() {
     } else {
       index_decoratore = (index_decoratore + 1) % N
       unlock(mutex_buffer)
+      
       signal(forno_vuoto)
       
       decora(piastrella)

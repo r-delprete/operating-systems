@@ -1,13 +1,13 @@
 /**
-* Si consideri il seguente problema: In un ambulatorio medico lavorano due medici 
-* ed un infermiere. Inizialmente i due medici sono in attesa dell'arrivo dei pazienti. 
-* Un paziente entra nell'ambulatorio e si reca dal primo medico libero che esegue 
-* la visita medica. Al termine della visita, il medico redige un referto che inserisce in 
-* un portadocumenti con M posizioni. L'infermiere preleva un referto alla volta e lo 
-* inserisce nel database dell'ambulatorio. Se entrambi i medici sono impegnati, il 
-* paziente si accomoda nella sala d'aspetto che dispone di N sedie. Se le N sedie 
-* sono tutte occupate, il paziente lascia I'ambulatorio.
-*/
+ * Si consideri il seguente problema: In un ambulatorio medico lavorano due medici 
+ * ed un infermiere. Inizialmente i due medici sono in attesa dell'arrivo dei pazienti. 
+ * Un paziente entra nell'ambulatorio e si reca dal primo medico libero che esegue 
+ * la visita medica. Al termine della visita, il medico redige un referto che inserisce in 
+ * un portadocumenti con M posizioni. L'infermiere preleva un referto alla volta e lo 
+ * inserisce nel database dell'ambulatorio. Se entrambi i medici sono impegnati, il 
+ * paziente si accomoda nella sala d'aspetto che dispone di N sedie. Se le N sedie 
+ * sono tutte occupate, il paziente lascia I'ambulatorio.
+ */
 
 medici: sem contatore = 2
 infermiere: sem binario = 1
@@ -22,7 +22,7 @@ mutex_portadocs: mutex = 1
 sedie: int = N
 mutex_sedie: mutex = 1
 produci_referto: sem contatore = M
-referto_pronto: sem binario = 0
+nuovo_referto: sem binario = 0
 
 paziente_process() {
   lock(mutex_sedie)
@@ -43,6 +43,10 @@ paziente_process() {
     lock(mutex_paz)
     pazienti--
     unlock(mutex_paz)
+
+    lock(mutex_sedie)
+    sedie++
+    unlock(mutex_sedie)
 
     exit(0)
   } else {
@@ -72,13 +76,13 @@ medico_process() {
 
     wait(infermiere)
 
-    signal(referto_pronto)
+    signal(nuovo_referto)
   }
 }
 
 infermiere_process() {
   while(1) {
-    wait(referto_pronto)
+    wait(nuovo_referto)
 
     lock(mutex_portadocs)
     aggiorna_db(portadocs[index_read])

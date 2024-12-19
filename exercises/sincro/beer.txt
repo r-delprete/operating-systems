@@ -19,76 +19,77 @@ mutex : banconeCs;
 
 clientelaAffollamento()
 {
-  /* repeat */
-  sleep(1);
-  clientela++;
+  while(1) {
+    sleep(1);
+    
+    lock(clientelaCs);
+    clientela++;
 
-  lock(clientelaCs);
-  if (clientela > 10)
-  {
-    affollato = true;
+    if (clientela > 10)
+    {
+      affollato = true;
+    }
+    else
+    {
+      affollato = false;
+    }
+    unlock(clientelaCs);
   }
-  else
-  {
-    affollato = false;
-  }
-  unlock(clientelaCs);
-  /* forever */
 }
 
 oste()
 {
-  /* repeat */
-  boccale = riempiBoccale();
+  while(1) {
+    boccale = riempiBoccale();
 
-  wait(vuoto);
+    wait(vuoto);
 
-  lock(banconeCs);
-  bancone[riempito] = boccale;
-  riempito = riempito + 1 % N;
-  unlock(banconeCs);
+    lock(banconeCs);
+    bancone[riempito] = boccale;
+    riempito = riempito + 1 % N;
+    unlock(banconeCs);
 
-  signal(pieno);
-  /* forever */
+    signal(pieno);
+  }
 }
 
 cameriere()
 {
-  /* repeat */
-  int boccaliDaPortare = 0;
+  while(1) {
+    int boccaliDaPortare = 0;
 
-  lock(clientelaCs);
-  if (affollato)
-  {
-    boccaliDaPortare = 4;
-  }
-  else
-  {
-    boccaliDaPortare = 2;
-  }
-  unlock(clientelaCs);
+    lock(clientelaCs);
+    if (affollato)
+    {
+      boccaliDaPortare = 4;
+    }
+    else
+    {
+      boccaliDaPortare = 2;
+    }
+    unlock(clientelaCs);
 
-  lock(banconeCs);
-  if (riempito >= boccaliDaPortare)
-  {
-    for (i to boccaliDaPortare)
+    lock(banconeCs);
+    if (riempito >= boccaliDaPortare)
     {
-      wait(pieno);
-      signal(vuoto);
-      boccale = bancone[preso];
-      preso = preso + 1 % N;
+      for (i to boccaliDaPortare)
+      {
+        wait(pieno);
+        signal(vuoto);
+        boccale = bancone[preso];
+        preso = preso + 1 % N;
+      }
     }
-  }
-  else
-  {
-    for (i to riempito)
+    else
     {
-      wait(pieno);
-      signal(vuoto);
-      boccale = bacone[preso];
-      preso = preso + 1 % N;
+      for (i to riempito)
+      {
+        wait(pieno);
+        signal(vuoto);
+        boccale = bacone[preso];
+        preso = preso + 1 % N;
+      }
     }
+    unlock(banconeCs);
   }
-  unlock(banconeCs);
-  /* forever */
 }

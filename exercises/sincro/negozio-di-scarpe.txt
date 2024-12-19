@@ -1,24 +1,28 @@
 /**
-* In un negozio di scarpe c’è un addetto che aiuta i clienti
-* a provare i modelli di scarpe scelti. L’addetto può solo
-* aiutare un cliente per volta su K clienti che possono attendere
-* in negozio, seduti su M sedie (K > M). Quando entra
-* un nuovo cliente, attende su una sedia libera, altrimenti lascia
-* il negozio. L’addetto, in mancanza di clienti,
-* provvede ad aggiornare il database dei nuovi modelli di
-* scarpe arrivati il giorno prima.
-*/
+ * In un negozio di scarpe c’è un addetto che aiuta i clienti
+ * a provare i modelli di scarpe scelti. L’addetto può solo
+ * aiutare un cliente per volta su K clienti che possono attendere
+ * in negozio, seduti su M sedie (K > M). Quando entra
+ * un nuovo cliente, attende su una sedia libera, altrimenti lascia
+ * il negozio. L’addetto, in mancanza di clienti,
+ * provvede ad aggiornare il database dei nuovi modelli di
+ * scarpe arrivati il giorno prima.
+ */
 
 semaforo binario: addetto = 1
 semaforo contatore: clienti = 0
 semaforo contatore: sedie = M
 semaforo binario: fine_servizio = 0
+clienti_mutex: mutex = 1
 
 addetto_process() {
   while (1) {
+    lock(clienti_mutex)
     if (sem_getvalue(clienti) == 0) {
+      unlock(clienti_mutex)
       aggiorna_db_scarpe()
     } else {
+      unlock(clienti_mutex)
       wait(clienti)
 
       aiuta_cliente()
@@ -31,7 +35,10 @@ addetto_process() {
 }
 
 cliente_process() {
+  lock(clienti_mutex)
   if (sem_getvalue(clienti) < sem_getvalue(sedie)) {
+    unlock(clienti_mutex)
+
     wait(sedie)
 
     wait(addetto)
@@ -39,6 +46,8 @@ cliente_process() {
     shopping()
 
     wait(fine_servizio)
+
+    signal(sedie)
 
     exit(0)
   } else {
