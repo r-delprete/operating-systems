@@ -7,10 +7,9 @@
 
 int capienzaMax = 10;
 int capienzaAttuale = 0;
-int chitarristi;
-int modelliChitarra;
-int chitarrePerModello;
-int chitarre[modelliChitarra][chitarrePerModello] = 1; // 1 disponibile, 0 non disponibile
+int chitarristi = N;
+int modelliChitarra = M;
+int chitarre[modelliChitarra] = { K };
 
 semaforo contatore : maxMasterclass;
 semaforo binario : accessoMasterclass;
@@ -19,13 +18,12 @@ mutex : accessoChitarre;
 
 masterclass()
 {
-  int modelloScelto;
-  int modelloChitarraScelto;
+  int modelloScelto = rand(0, M);
 
   lock(accessoChitarre);
-  if (chitarre[modelloScelto][modelloChitarraScelto] == 1)
+  if (chitarre[modelloScelto] > 0)
   {
-    chitarre[modelloScelto][modelloChitarraScelto] = 0;
+    chitarre[modelloScelto]--;
     unlock(accessoChitarre);
 
     if (capienzaAttuale <= chitarristi)

@@ -1,10 +1,10 @@
 /**
-* N worker N/2 master. I-esimo master controlla worker (i*2)-esimo e (i*2+1)-esimo. 
-* I master estraggono un numero intero nell'intervallo [1,N]. Il master che ha estratto il numero maggiore, 
-* comunica ai propri worker di produrre ognuno un numero casuale di elementi. 
-* Gli elementi sono prodotti uno alla volta e inseriti in un buffer singolo da cui il master legge. 
-* Quando il master ha letto tutti gli elementi prodotti, il procedimento viene ripetuto nuovamente dall'inizio.
-*/
+ * N worker N/2 master. I-esimo master controlla worker (i*2)-esimo e (i*2+1)-esimo. 
+ * I master estraggono un numero intero nell'intervallo [1,N]. Il master che ha estratto il numero maggiore, 
+ * comunica ai propri worker di produrre ognuno un numero casuale di elementi. 
+ * Gli elementi sono prodotti uno alla volta e inseriti in un buffer singolo da cui il master legge. 
+ * Quando il master ha letto tutti gli elementi prodotti, il procedimento viene ripetuto nuovamente dall'inizio.
+ */
 
 semaforo binario: sveglia_worker[N] = 0
 semaforo binario: worker_completato[N] = 0
