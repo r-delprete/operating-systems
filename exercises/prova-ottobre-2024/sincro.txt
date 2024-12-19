@@ -1,0 +1,104 @@
+/**
+ * Ad una fiera è in atto un gioco. Un armiere pone M spade laser su un bancone che N guerrieri Jedi (N>M)
+ * devono accaparrarsi (una spada per ciascuno) quanto prima. Chi riesce a prendere la propria spada,
+ * attende gli altri guerrieri che riescono a prendere la spada, mentre coloro i quali sono rimasti
+ * senza attendono il prossimo giro.
+ * II prossimo giro ha inizio solo dopo che tutti i guerrieri hanno posato le spade decretando
+ * quale vincitore il guerriero con la spada più pesante e restituendo le spade all'armiere.
+ * Il gioco termina quando N guerrieri hanno vinto il gioco.
+ * Usare semafori e variabili di condizione.
+ */
+
+guerrieri: int = N
+vincitori: int = 0
+mutex_vincitori: sem binario = 1
+spade_laser: int[M] = rand(10, 20)
+mutex_spade: sem binario = 1
+mutex_guerrieri: sem binario = 1
+finish: sem binario = 0
+pronti: var condition = 0
+spade_scelte: int = 0
+peso_max: int = 0
+mutex_peso: sem binario = 1
+mutex_spade_scelte: sem binario = 1
+confronti_count: int = 0
+mutex_confronti: sem binario = 1
+confronti: var condition = 0
+
+struct Spada_Scelta {
+  peso: int;
+  index: int;
+}
+
+giocatore_process() {
+  while(1) {
+    scelta: bool = false
+    spada_scelta: Spada_Scelta
+    
+    wait(mutex_spade)
+    while(!scelta) {
+      if (disponibilita_spade(spade_laser)) {   // controllo se ci sono spade disponibili
+        spada = rand(0, M)
+
+        if (spade_laser[spada] != -1) {
+          spada_scelta.peso = spade_laser[spada]
+          spade_laser[spada] = -1               // indico che quella spada non è più disponibile
+          spada_scelta.index = spada
+          scelta = true
+        }   
+      }
+    }
+    signal(mutex_spade)
+
+    wait(mutex_spade_scelte)
+    spade_scelte++
+
+    if (spade_scelte == guerrieri) {
+      cond_signal_broadcast(pronti)            // sveglio tutti coloro in attesa che i guerrieri scegliessero una spada  
+    }
+
+    while (spade_scelte < guerrieri) {
+      signal(mutex_spade_scelte)
+      cond_wait(pronti)                        // attendo che tutti i guerrieri scelgano una spada
+    }
+    signal(mutex_spade_scelte)
+
+    wait(mutex_peso)
+    if (spada_scelta.peso > peso_max) {
+      peso_max = spada_scelta.peso
+      
+      wait(mutex_confronti)
+      confronti_count++
+
+      if (confronti_count == guerrieri) {
+        cond_signal_broadcast(confronti)        // sveglio tutti coloro in attesa che i guerrieri confrontassero il peso
+      }
+
+      while(confronti_count < guerrieri) {
+        signal(mutex_confronti)
+        cond_wait(confronti)                    // attendo che tutti confrontano il peso e libero il mutex
+      }
+      signal(mutex_confronti)
+
+      wait(mutex_spade)
+      spade_laser[spada_scelta.index] = spada_scelta.peso     // resetto il buffer delle spade reimpostando il peso della spada scelta
+      signal(mutex_spade)
+      
+      if (peso_max == spada_scelta.peso) {
+        signal(mutex_peso)
+
+        wait(mutex_vincitori)
+        vincitori++
+
+
+        if (vincitori == guerrieri) {
+          signal(mutex_vincitori)
+          exit(0)
+        }
+        signal(mutex_vincitori)
+      }
+    }
+    
+    signal(mutex_peso)
+  }
+}
